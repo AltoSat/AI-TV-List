@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>✦AI番組表</title>
+    <link rel="manifest" href="data:application/manifest+json,{
+        \"name\": \"✦AI番組表\",
+        \"short_name\": \"AI番組表\",
+        \"start_url\": \".\",
+        \"display\": \"standalone\",
+        \"background_color\": \"#0f0f1a\",
+        \"theme_color\": \"#1a73e8\"
+    }">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', sans-serif;
+            background: #0f0f1a;
+            margin: 0;
+            padding: 0;
+            padding-top: 30px;
+            color: #ddd;
+            overscroll-behavior: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #header {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            background: #1a1a2e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 16px;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        #header h1 {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #8ab4f8;
+            margin: 0;
+        }
+        #menuBtn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #ccc;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        #menuPanel {
+            display: none;
+            position: fixed;
+            top: 30px; right: 10px;
+            width: 300px;
+            max-width: calc(100vw - 20px);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: #1e1e30;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+            z-index: 200;
+            flex-direction: column;
+        }
+        #menuPanel.open { display: flex; }
+
+        .menu-link-row {
+            padding: 10px 12px;
+            border-bottom: 1px solid #333;
+        }
+        .menu-link {
+            color: #8ab4f8;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .menu-tabs {
+            display: flex;
+            border-bottom: 1px solid #333;
+            background: #2a2a3c;
+            border-radius: 12px 12px 0 0;
+        }
+        .menu-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #aaa;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: 0.2s;
+        }
+        .menu-tab.active {
+            color: #8ab4f8;
+            border-bottom-color: #8ab4f8;
+            background: #1e1e30;
+        }
+        .menu-content {
+            padding: 12px;
+            display: none;
+        }
+        .menu-content.active { display: block; }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 0.9em;
+            background: #2a2a3c;
+            color: #ddd;
+            resize: vertical;
+        }
+        .menu-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .menu-btn.secondary { background: #555; color: #ccc; }
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        .list-item input {
+            flex: 1;
+            padding: 6px 8px;
+            background: #2a2a3c;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ddd;
+            font-size: 0.9em;
+        }
+        .list-item button {
+            background: none;
+            border: none;
+            color: #f87171;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 2px 4px;
+        }
+        .small-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.8em;
+            cursor: pointer;
+        }
+
+        #tabs {
+            position: sticky;
+            top: 30px;
+            background: #1a1a2e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            z-index: 90;
+            align-items: center;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            flex: 0 0 auto;
+            padding: 12px 16px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: 0.2s;
+            line-height: 1.2;
+        }
+        .tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+
+        #content {
+            padding: 8px 16px 24px;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .program-group {
+            background: #1e1e30;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+        .program-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px;
+            border-bottom: 1px solid #333;
+            position: relative;
+            touch-action: pan-y;
+            transition: background-color 0.15s, transform 0.3s;
+        }
+        .program-item:last-child { border-bottom: none; }
+        .program-item.uninteresting {
+            background: #000;
+        }
+        .program-time {
+            font-weight: 700;
+            min-width: 50px;
+            color: #8ab4f8;
+            font-size: 1em;
+            padding-top: 2px;
+        }
+        .program-body { flex: 1; }
+        .program-title {
+            font-weight: 600;
+            font-size: 1em;
+            margin-bottom: 4px;
+            line-height: 1.4;
+            transition: opacity 0.2s;
+        }
+        .program-desc {
+            font-size: 0.9em;
+            color: #aaa;
+            line-height: 1.5;
+            display: block;
+        }
+        .program-item.uninteresting .program-title {
+            opacity: 0.5;
+        }
+        .program-item.uninteresting .program-desc {
+            display: none;
+        }
+        .program-item.uninteresting .program-desc.show {
+            display: block;
+        }
+        mark {
+            background: #fbbf24;
+            color: #000;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+        .empty-message {
+            text-align: center;
+            color: #888;
+            padding: 40px 20px;
+            font-size: 1em;
+        }
+        .swiping {
+            background-color: #2c2c3a !important;
+            transform: translateX(-20px);
+        }
+
+        /* 検索パネル */
+        #searchPanel {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0f0f1a;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            display: none;
+        }
+        #searchPanel.open {
+            display: flex;
+        }
+        #searchHeader {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: #1a1a2e;
+            border-bottom: 1px solid #333;
+        }
+        #searchClose {
+            background: none;
+            border: none;
+            color: #f87171;
+            font-size: 1.8em;
+            cursor: pointer;
+            margin-right: 12px;
+            line-height: 1;
+        }
+        #searchFrame {
+            flex: 1;
+            border: none;
+            width: 100%;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>✦AI番組表</h1>
+    <button id="menuBtn" aria-label="メニュー">☰</button>
+</div>
+
+<div id="menuPanel">
+    <div class="menu-tabs">
+        <div class="menu-tab active" data-tab="tab-paste">📋 貼り付け</div>
+        <div class="menu-tab" data-tab="tab-ignore">🙈 興味なし</div>
+        <div class="menu-tab" data-tab="tab-highlight">🔍 強調</div>
+    </div>
+
+    <div class="menu-content active" id="tab-paste">
+        <textarea id="pasteArea" placeholder="Gガイドの1日分をコピーして貼り付け"></textarea>
+        <button id="clearBtn" class="menu-btn secondary" style="margin-top:8px;">🗑️ 全データ消去</button>
+        <div class="menu-link-row" style="border-bottom:none; padding:10px 0 0 0;">
+            <a href="https://bangumi.org/epg/td?ggm_group_id=1" target="_blank" rel="noopener" class="menu-link">🔗 Gガイド番組表を開く</a>
+        </div>
+    </div>
+
+    <div class="menu-content" id="tab-ignore">
+        <div id="uninterestingList"></div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+            <input type="text" id="newUninteresting" placeholder="追加する番組名（先頭一致）">
+            <button id="addUninterestingBtn" class="small-btn">追加</button>
+        </div>
+    </div>
+
+    <div class="menu-content" id="tab-highlight">
+        <div id="highlightList"></div>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+            <input type="text" id="newHighlight" placeholder="強調するキーワード">
+            <button id="addHighlightBtn" class="small-btn">追加</button>
+        </div>
+    </div>
+</div>
+
+<nav id="tabs"></nav>
+<main id="content"></main>
+
+<!-- 検索パネル -->
+<div id="searchPanel">
+    <div id="searchHeader">
+        <button id="searchClose">✕</button>
+        <div style="color:#ccc; font-size:0.9em;" id="searchTitle">Web検索</div>
+    </div>
+    <iframe id="searchFrame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            const swCode = `const CACHE='tv-ai-v12';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+        });
+    }
+
+    const STORAGE_KEY = 'tvProgramsV12';
+    const SETTINGS_KEY = 'tvSettingsV12';
+    const CHANNEL_ORDER = ["HBC", "NHK Eテレ", "NHK総合", "STV", "HTB", "TVh", "北海道文化放送"];
+
+    let programs = [];
+    let displayDate = null;
+    let selectedChannel = CHANNEL_ORDER[0];
+    let uninterestingByChannel = {};
+    let highlightWords = [];
+
+    // DOM
+    const menuBtn = document.getElementById('menuBtn');
+    const menuPanel = document.getElementById('menuPanel');
+    const pasteArea = document.getElementById('pasteArea');
+    const clearBtn = document.getElementById('clearBtn');
+    const tabsNav = document.getElementById('tabs');
+    const contentDiv = document.getElementById('content');
+    const searchPanel = document.getElementById('searchPanel');
+    const searchFrame = document.getElementById('searchFrame');
+    const searchClose = document.getElementById('searchClose');
+    const searchTitle = document.getElementById('searchTitle');
+
+    function getCurrentUninteresting() {
+        if (!uninterestingByChannel[selectedChannel]) {
+            uninterestingByChannel[selectedChannel] = [];
+        }
+        return uninterestingByChannel[selectedChannel];
+    }
+
+    // メニュー開閉
+    menuBtn.addEventListener('click', () => {
+        menuPanel.classList.toggle('open');
+        // 開いたときに興味なしリストを更新
+        if (menuPanel.classList.contains('open')) {
+            renderUninterestingList();
+        }
+    });
+    document.addEventListener('click', (e) => {
+        if (!menuPanel.contains(e.target) && e.target !== menuBtn) menuPanel.classList.remove('open');
+    });
+
+    // メニュータブ切り替え
+    document.querySelectorAll('.menu-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const target = tab.dataset.tab;
+            document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(target).classList.add('active');
+            if (target === 'tab-ignore') renderUninterestingList();
+        });
+    });
+
+    // 設定管理
+    function loadSettings() {
+        try {
+            const raw = localStorage.getItem(SETTINGS_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                uninterestingByChannel = data.uninterestingByChannel || {};
+                highlightWords = data.highlight || [];
+            }
+        } catch (e) {
+            console.warn('設定の読み込みに失敗しました', e);
+            uninterestingByChannel = {};
+            highlightWords = [];
+        }
+    }
+    function saveSettings() {
+        try {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                uninterestingByChannel,
+                highlight: highlightWords
+            }));
+        } catch (e) {
+            console.warn('設定の保存に失敗しました', e);
+        }
+        renderAll();
+    }
+
+    function loadPrograms() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            const arr = JSON.parse(raw);
+            return arr.map(obj => ({
+                ...obj,
+                displayDate: new Date(obj.displayDate),
+                rawStart: new Date(obj.rawStart),
+                rawEnd: new Date(obj.rawEnd)
+            }));
+        } catch (e) {
+            console.warn('番組データの読み込みに失敗しました', e);
+            return null;
+        }
+    }
+    function savePrograms() {
+        try {
+            const data = programs.map(p => ({
+                channel: p.channel,
+                title: p.title,
+                description: p.description,
+                displayDate: p.displayDate.toISOString(),
+                rawStart: p.rawStart.toISOString(),
+                rawEnd: p.rawEnd.toISOString()
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('番組データの保存に失敗しました', e);
+        }
+    }
+
+    // タイトルの装飾記号を除去
+    function getBaseTitle(fullTitle) {
+        const idx = fullTitle.search(/[🈑🈓【]/);
+        return idx === -1 ? fullTitle : fullTitle.substring(0, idx).trim();
+    }
+
+    // ハイライト適用（共通）
+    function applyHighlight(text) {
+        return highlightWords.reduce((str, word) => {
+            const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return str.replace(regex, '<mark>$1</mark>');
+        }, text);
+    }
+
+    // 説明文に強調ワードが含まれるか
+    function descriptionContainsHighlight(desc) {
+        if (!desc || highlightWords.length === 0) return false;
+        return highlightWords.some(word => desc.includes(word));
+    }
+
+    // 番組解析（変更なし）
+    function parseProgramsFromHTML(htmlString) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        const ulElements = doc.querySelectorAll('ul[id^="program_line_"]');
+        if (ulElements.length === 0) throw new Error('番組表のul要素が見つかりません。');
+
+        const channelAssign = [];
+        for (let i = 0; i < Math.min(ulElements.length, CHANNEL_ORDER.length); i++) channelAssign.push(CHANNEL_ORDER[i]);
+        for (let i = channelAssign.length; i < ulElements.length; i++) channelAssign.push(`Ch.${i+1}`);
+
+        const all = [];
+        for (let i = 0; i < ulElements.length; i++) {
+            const ul = ulElements[i];
+            const ch = channelAssign[i];
+            ul.querySelectorAll('li[class*="sc-"]').forEach(li => {
+                const s = li.getAttribute('s');
+                const e = li.getAttribute('e');
+                if (!s || !e) return;
+                const titleEl = li.querySelector('.program_title');
+                const detailEl = li.querySelector('.program_detail');
+                const title = titleEl ? titleEl.textContent.trim() : '(タイトルなし)';
+                const desc = detailEl ? detailEl.textContent.trim() : '';
+
+                const parseTime = str => new Date(+str.substring(0,4), +str.substring(4,6)-1, +str.substring(6,8), +str.substring(8,10), +str.substring(10,12));
+                all.push({ channel: ch, title, description: desc, rawStart: parseTime(s), rawEnd: parseTime(e) });
+            });
+        }
+        if (all.length === 0) return [];
+
+        let baseDate = null;
+        for (const p of all) if (p.rawStart.getHours() >= 4) { baseDate = new Date(p.rawStart); baseDate.setHours(0,0,0,0); break; }
+        if (!baseDate) { baseDate = new Date(all[0].rawStart); baseDate.setHours(0,0,0,0); }
+        all.forEach(p => p.displayDate = baseDate);
+        return all;
+    }
+
+    // レンダリング全体
+    function renderAll() {
+        if (programs.length === 0) {
+            tabsNav.innerHTML = '';
+            contentDiv.innerHTML = '<div class="empty-message">番組データがありません。メニューから貼り付けしてください。</div>';
+            return;
+        }
+        if (!displayDate && programs.length > 0) displayDate = programs[0].displayDate;
+        renderTabs();
+        renderProgramsForChannel();
+        renderHighlightList();
+    }
+
+    function renderTabs() {
+        const available = [...new Set(programs.map(p => p.channel))];
+        const ordered = CHANNEL_ORDER.filter(ch => available.includes(ch));
+        for (const ch of available) if (!ordered.includes(ch)) ordered.push(ch);
+
+        tabsNav.innerHTML = '';
+        ordered.forEach(ch => {
+            const tab = document.createElement('div');
+            tab.className = 'tab' + (ch === selectedChannel ? ' active' : '');
+            tab.textContent = ch;
+            tab.addEventListener('click', () => {
+                selectedChannel = ch;
+                renderAll();
+                // チャンネル切り替え時にメニューが開いていたら興味なしリスト更新
+                if (menuPanel.classList.contains('open')) renderUninterestingList();
+            });
+            tabsNav.appendChild(tab);
+        });
+        if (!ordered.includes(selectedChannel)) {
+            selectedChannel = ordered[0] || CHANNEL_ORDER[0];
+            renderAll();
+        }
+    }
+
+    function renderProgramsForChannel() {
+        const filtered = programs.filter(p => p.channel === selectedChannel).sort((a,b) => a.rawStart - b.rawStart);
+        if (filtered.length === 0) {
+            contentDiv.innerHTML = '<div class="empty-message">このチャンネルの番組はありません</div>';
+            return;
+        }
+        const uninterestingList = getCurrentUninteresting();
+
+        let html = '';
+        if (displayDate) {
+            const dateStr = displayDate.toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+            html += `<h3 style="margin: 16px 0 8px; font-weight:600; color:#aaa;">${dateStr}</h3>`;
+        }
+        html += '<div class="program-group">';
+        filtered.forEach(p => {
+            const startStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
+            const baseTitle = getBaseTitle(p.title);
+            const isUninteresting = uninterestingList.some(word => baseTitle.startsWith(word));
+            const itemClass = isUninteresting ? 'program-item uninteresting' : 'program-item';
+
+            const highlightedTitle = applyHighlight(escapeHTML(p.title));
+            const descText = p.description || '';
+            const highlightedDesc = applyHighlight(escapeHTML(descText));
+
+            // 興味なし番組でも強調ワードが説明文にあれば表示
+            let showDesc = false;
+            if (isUninteresting && descriptionContainsHighlight(descText)) {
+                showDesc = true;
+            } else if (!isUninteresting) {
+                showDesc = true;
+            }
+
+            const descDisplay = showDesc ? `<div class="program-desc${isUninteresting ? ' show' : ''}">${highlightedDesc}</div>` : `<div class="program-desc${isUninteresting ? '' : ''}">${highlightedDesc}</div>`;
+
+            html += `
+                <div class="${itemClass}" data-title="${escapeHTML(baseTitle)}" data-channel="${escapeHTML(selectedChannel)}" data-search="${escapeHTML(baseTitle)}">
+                    <div class="program-time">${startStr}</div>
+                    <div class="program-body">
+                        <div class="program-title">${highlightedTitle}</div>
+                        ${descDisplay}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        contentDiv.innerHTML = html;
+
+        // 興味なし番組のタップで説明表示切替（強調ワードがないものは手動で表示）
+        document.querySelectorAll('.program-item.uninteresting .program-title').forEach(titleEl => {
+            titleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const desc = titleEl.parentElement.querySelector('.program-desc');
+                if (desc) desc.classList.toggle('show');
+            });
+        });
+
+        attachSwipeEvents();
+    }
+
+    function attachSwipeEvents() {
+        const items = document.querySelectorAll('.program-item');
+        items.forEach(item => {
+            let startX = 0;
+            const threshold = 80;
+
+            const resetSwipe = () => {
+                item.classList.remove('swiping');
+            };
+
+            item.addEventListener('touchstart', (e) => {
+                if (window.getSelection().toString().length > 0) return;
+                startX = e.touches[0].clientX;
+                item.classList.remove('swiping');
+            }, {passive: true});
+
+            item.addEventListener('touchmove', (e) => {
+                if (window.getSelection().toString().length > 0) {
+                    item.classList.remove('swiping');
+                    return;
+                }
+                const currentX = e.touches[0].clientX;
+                const diff = startX - currentX;
+                if (diff > 20) {
+                    item.classList.add('swiping');
+                } else if (diff < -20) {
+                    // 右スワイプ用（アニメーションは別でも良いが、ここではクラス付けずに実装）
+                    item.classList.remove('swiping');
+                } else {
+                    item.classList.remove('swiping');
+                }
+            }, {passive: true});
+
+            item.addEventListener('touchend', (e) => {
+                if (window.getSelection().toString().length > 0) {
+                    resetSwipe();
+                    return;
+                }
+                const endX = e.changedTouches[0].clientX;
+                const diff = startX - endX;
+                if (diff > threshold) {
+                    // 左スワイプ：興味なし登録/解除
+                    const baseTitle = item.dataset.title;
+                    const channel = item.dataset.channel;
+                    if (!baseTitle || !channel) return;
+
+                    if (!uninterestingByChannel[channel]) uninterestingByChannel[channel] = [];
+                    const list = uninterestingByChannel[channel];
+                    const index = list.indexOf(baseTitle);
+                    if (index === -1) {
+                        list.push(baseTitle);
+                    } else {
+                        list.splice(index, 1);
+                    }
+                    saveSettings();
+                    renderAll();
+                } else if (diff < -threshold) {
+                    // 右スワイプ：Web検索
+                    const searchQuery = item.dataset.search || item.dataset.title;
+                    openSearchPanel(searchQuery);
+                }
+                resetSwipe();
+            });
+        });
+    }
+
+    function openSearchPanel(query) {
+        // Google検索をiframeで表示（X-Frame-Optionsで拒否される可能性があるため、DuckDuckGoを使用）
+        const encodedQuery = encodeURIComponent(query);
+        // DuckDuckGoはiframe許可されている場合が多い
+        searchFrame.src = `https://duckduckgo.com/?q=${encodedQuery}`;
+        searchTitle.textContent = `検索: ${query}`;
+        searchPanel.classList.add('open');
+    }
+
+    searchClose.addEventListener('click', () => {
+        searchPanel.classList.remove('open');
+        searchFrame.src = 'about:blank';
+    });
+
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function renderUninterestingList() {
+        const list = getCurrentUninteresting();
+        const div = document.getElementById('uninterestingList');
+        div.innerHTML = list.map((word, idx) => `
+            <div class="list-item">
+                <input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="uninteresting" class="edit-word">
+                <button data-action="removeUninteresting" data-index="${idx}">✕</button>
+            </div>
+        `).join('');
+    }
+
+    function renderHighlightList() {
+        const div = document.getElementById('highlightList');
+        div.innerHTML = highlightWords.map((word, idx) => `
+            <div class="list-item">
+                <input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="highlight" class="edit-word">
+                <button data-action="removeHighlight" data-index="${idx}">✕</button>
+            </div>
+        `).join('');
+    }
+
+    // イベント委譲
+    document.addEventListener('click', (e) => {
+        if (e.target.dataset.action === 'removeUninteresting') {
+            const idx = parseInt(e.target.dataset.index);
+            const list = getCurrentUninteresting();
+            list.splice(idx, 1);
+            saveSettings();
+            renderUninterestingList();
+        } else if (e.target.dataset.action === 'removeHighlight') {
+            const idx = parseInt(e.target.dataset.index);
+            highlightWords.splice(idx, 1);
+            saveSettings();
+            renderHighlightList();
+        }
+    });
+
+    document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('edit-word')) {
+            const idx = parseInt(e.target.dataset.index);
+            const type = e.target.dataset.type;
+            const newVal = e.target.value.trim();
+            if (newVal === '') return;
+            if (type === 'uninteresting') {
+                const list = getCurrentUninteresting();
+                if (idx >= 0 && idx < list.length) list[idx] = newVal;
+                saveSettings();
+            } else if (type === 'highlight') {
+                if (idx >= 0 && idx < highlightWords.length) highlightWords[idx] = newVal;
+                saveSettings();
+            }
+        }
+    });
+
+    document.getElementById('newUninteresting').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('addUninterestingBtn').click();
+    });
+    document.getElementById('newHighlight').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('addHighlightBtn').click();
+    });
+
+    document.getElementById('addUninterestingBtn').addEventListener('click', () => {
+        const input = document.getElementById('newUninteresting');
+        const val = input.value.trim();
+        if (val && !getCurrentUninteresting().includes(val)) {
+            getCurrentUninteresting().push(val);
+            saveSettings();
+            renderUninterestingList();
+            input.value = '';
+        }
+    });
+    document.getElementById('addHighlightBtn').addEventListener('click', () => {
+        const input = document.getElementById('newHighlight');
+        const val = input.value.trim();
+        if (val && !highlightWords.includes(val)) {
+            highlightWords.push(val);
+            saveSettings();
+            renderHighlightList();
+            input.value = '';
+        }
+    });
+
+    // 貼り付けイベント
+    document.addEventListener('paste', (e) => {
+        if (e.target !== pasteArea) return;
+        e.preventDefault();
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData) return;
+        const htmlData = clipboardData.getData('text/html');
+        const plainText = clipboardData.getData('text/plain');
+        pasteArea.value = plainText || '';
+        if (!htmlData) {
+            alert('HTML形式のデータが取得できませんでした。Gガイドの番組表をコピーしてください。');
+            return;
+        }
+        try {
+            const parsed = parseProgramsFromHTML(htmlData);
+            if (parsed.length === 0) {
+                alert('番組データを抽出できませんでした。');
+                return;
+            }
+            const unique = [];
+            const seen = new Set();
+            for (const p of parsed) {
+                const id = `${p.rawStart.toISOString()}_${p.channel}_${p.title}`;
+                if (!seen.has(id)) { seen.add(id); unique.push(p); }
+            }
+            programs = unique;
+            displayDate = programs[0]?.displayDate || null;
+            selectedChannel = CHANNEL_ORDER[0];
+            savePrograms();
+            renderAll();
+            pasteArea.value = '';
+            menuPanel.classList.remove('open');
+        } catch (err) {
+            alert('解析エラー: ' + err.message);
+            console.error(err);
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        if (confirm('番組データ・興味なし・強調ワードをすべて消去しますか？')) {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(SETTINGS_KEY);
+            programs = []; displayDate = null;
+            uninterestingByChannel = {}; highlightWords = [];
+            renderAll();
+            menuPanel.classList.remove('open');
+        }
+    });
+
+    // 初期化
+    window.addEventListener('load', () => {
+        loadSettings();
+        const saved = loadPrograms();
+        if (saved && saved.length > 0) {
+            programs = saved;
+            displayDate = programs[0]?.displayDate || null;
+            selectedChannel = CHANNEL_ORDER[0];
+        }
+        renderAll();
+    });
+</script>
+</body>
+</html>
