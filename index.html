@@ -259,46 +259,14 @@
             padding: 40px 20px;
             font-size: 1em;
         }
-        .swiping {
+        /* スワイプアニメーション */
+        .swiping-left {
             background-color: #2c2c3a !important;
             transform: translateX(-20px);
         }
-
-        /* 検索パネル */
-        #searchPanel {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #0f0f1a;
-            z-index: 300;
-            display: flex;
-            flex-direction: column;
-            display: none;
-        }
-        #searchPanel.open {
-            display: flex;
-        }
-        #searchHeader {
-            display: flex;
-            align-items: center;
-            padding: 10px 16px;
-            background: #1a1a2e;
-            border-bottom: 1px solid #333;
-        }
-        #searchClose {
-            background: none;
-            border: none;
-            color: #f87171;
-            font-size: 1.8em;
-            cursor: pointer;
-            margin-right: 12px;
-            line-height: 1;
-        }
-        #searchFrame {
-            flex: 1;
-            border: none;
-            width: 100%;
-            background: #fff;
+        .swiping-right {
+            background-color: #2c2c3a !important;
+            transform: translateX(20px);
         }
     </style>
 </head>
@@ -320,7 +288,7 @@
         <textarea id="pasteArea" placeholder="Gガイドの1日分をコピーして貼り付け"></textarea>
         <button id="clearBtn" class="menu-btn secondary" style="margin-top:8px;">🗑️ 全データ消去</button>
         <div class="menu-link-row" style="border-bottom:none; padding:10px 0 0 0;">
-            <a href="https://bangumi.org/epg/td?ggm_group_id=1" target="_blank" rel="noopener" class="menu-link">🔗 Gガイド番組表を開く</a>
+            <button id="openGguideBtn" class="menu-btn" style="width:100%;">🔗 Gガイド番組表を開く</button>
         </div>
     </div>
 
@@ -344,26 +312,17 @@
 <nav id="tabs"></nav>
 <main id="content"></main>
 
-<!-- 検索パネル -->
-<div id="searchPanel">
-    <div id="searchHeader">
-        <button id="searchClose">✕</button>
-        <div style="color:#ccc; font-size:0.9em;" id="searchTitle">Web検索</div>
-    </div>
-    <iframe id="searchFrame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-</div>
-
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v12';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v13';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
     }
 
-    const STORAGE_KEY = 'tvProgramsV12';
-    const SETTINGS_KEY = 'tvSettingsV12';
+    const STORAGE_KEY = 'tvProgramsV13';
+    const SETTINGS_KEY = 'tvSettingsV13';
     const CHANNEL_ORDER = ["HBC", "NHK Eテレ", "NHK総合", "STV", "HTB", "TVh", "北海道文化放送"];
 
     let programs = [];
@@ -377,12 +336,9 @@
     const menuPanel = document.getElementById('menuPanel');
     const pasteArea = document.getElementById('pasteArea');
     const clearBtn = document.getElementById('clearBtn');
+    const openGguideBtn = document.getElementById('openGguideBtn');
     const tabsNav = document.getElementById('tabs');
     const contentDiv = document.getElementById('content');
-    const searchPanel = document.getElementById('searchPanel');
-    const searchFrame = document.getElementById('searchFrame');
-    const searchClose = document.getElementById('searchClose');
-    const searchTitle = document.getElementById('searchTitle');
 
     function getCurrentUninteresting() {
         if (!uninterestingByChannel[selectedChannel]) {
@@ -394,7 +350,6 @@
     // メニュー開閉
     menuBtn.addEventListener('click', () => {
         menuPanel.classList.toggle('open');
-        // 開いたときに興味なしリストを更新
         if (menuPanel.classList.contains('open')) {
             renderUninterestingList();
         }
@@ -415,7 +370,12 @@
         });
     });
 
-    // 設定管理
+    // Gガイドをシステムブラウザで開く
+    openGguideBtn.addEventListener('click', () => {
+        window.open('https://bangumi.org/epg/td?ggm_group_id=1', '_blank');
+    });
+
+    // 設定管理（保存確認付き）
     function loadSettings() {
         try {
             const raw = localStorage.getItem(SETTINGS_KEY);
@@ -432,12 +392,17 @@
     }
     function saveSettings() {
         try {
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+            const json = JSON.stringify({
                 uninterestingByChannel,
                 highlight: highlightWords
-            }));
+            });
+            localStorage.setItem(SETTINGS_KEY, json);
+            // 保存確認
+            const test = localStorage.getItem(SETTINGS_KEY);
+            if (test !== json) throw new Error('設定の保存に失敗しました');
         } catch (e) {
-            console.warn('設定の保存に失敗しました', e);
+            alert('設定の保存に失敗しました。空き容量を確認してください。');
+            console.error(e);
         }
         renderAll();
     }
@@ -468,9 +433,14 @@
                 rawStart: p.rawStart.toISOString(),
                 rawEnd: p.rawEnd.toISOString()
             }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            const json = JSON.stringify(data);
+            localStorage.setItem(STORAGE_KEY, json);
+            // 保存確認
+            const test = localStorage.getItem(STORAGE_KEY);
+            if (test !== json) throw new Error('番組データの保存に失敗しました');
         } catch (e) {
-            console.warn('番組データの保存に失敗しました', e);
+            alert('番組データの保存に失敗しました。空き容量を確認してください。');
+            console.error(e);
         }
     }
 
@@ -480,7 +450,7 @@
         return idx === -1 ? fullTitle : fullTitle.substring(0, idx).trim();
     }
 
-    // ハイライト適用（共通）
+    // ハイライト適用
     function applyHighlight(text) {
         return highlightWords.reduce((str, word) => {
             const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -488,13 +458,12 @@
         }, text);
     }
 
-    // 説明文に強調ワードが含まれるか
     function descriptionContainsHighlight(desc) {
         if (!desc || highlightWords.length === 0) return false;
         return highlightWords.some(word => desc.includes(word));
     }
 
-    // 番組解析（変更なし）
+    // パース
     function parseProgramsFromHTML(htmlString) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -531,7 +500,7 @@
         return all;
     }
 
-    // レンダリング全体
+    // レンダリング
     function renderAll() {
         if (programs.length === 0) {
             tabsNav.innerHTML = '';
@@ -557,7 +526,6 @@
             tab.addEventListener('click', () => {
                 selectedChannel = ch;
                 renderAll();
-                // チャンネル切り替え時にメニューが開いていたら興味なしリスト更新
                 if (menuPanel.classList.contains('open')) renderUninterestingList();
             });
             tabsNav.appendChild(tab);
@@ -592,7 +560,6 @@
             const descText = p.description || '';
             const highlightedDesc = applyHighlight(escapeHTML(descText));
 
-            // 興味なし番組でも強調ワードが説明文にあれば表示
             let showDesc = false;
             if (isUninteresting && descriptionContainsHighlight(descText)) {
                 showDesc = true;
@@ -600,7 +567,9 @@
                 showDesc = true;
             }
 
-            const descDisplay = showDesc ? `<div class="program-desc${isUninteresting ? ' show' : ''}">${highlightedDesc}</div>` : `<div class="program-desc${isUninteresting ? '' : ''}">${highlightedDesc}</div>`;
+            const descDisplay = showDesc
+                ? `<div class="program-desc${isUninteresting ? ' show' : ''}">${highlightedDesc}</div>`
+                : `<div class="program-desc">${highlightedDesc}</div>`;
 
             html += `
                 <div class="${itemClass}" data-title="${escapeHTML(baseTitle)}" data-channel="${escapeHTML(selectedChannel)}" data-search="${escapeHTML(baseTitle)}">
@@ -615,7 +584,6 @@
         html += '</div>';
         contentDiv.innerHTML = html;
 
-        // 興味なし番組のタップで説明表示切替（強調ワードがないものは手動で表示）
         document.querySelectorAll('.program-item.uninteresting .program-title').forEach(titleEl => {
             titleEl.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -634,29 +602,30 @@
             const threshold = 80;
 
             const resetSwipe = () => {
-                item.classList.remove('swiping');
+                item.classList.remove('swiping-left', 'swiping-right');
             };
 
             item.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
                 startX = e.touches[0].clientX;
-                item.classList.remove('swiping');
+                resetSwipe();
             }, {passive: true});
 
             item.addEventListener('touchmove', (e) => {
                 if (window.getSelection().toString().length > 0) {
-                    item.classList.remove('swiping');
+                    resetSwipe();
                     return;
                 }
                 const currentX = e.touches[0].clientX;
                 const diff = startX - currentX;
                 if (diff > 20) {
-                    item.classList.add('swiping');
+                    item.classList.add('swiping-left');
+                    item.classList.remove('swiping-right');
                 } else if (diff < -20) {
-                    // 右スワイプ用（アニメーションは別でも良いが、ここではクラス付けずに実装）
-                    item.classList.remove('swiping');
+                    item.classList.add('swiping-right');
+                    item.classList.remove('swiping-left');
                 } else {
-                    item.classList.remove('swiping');
+                    resetSwipe();
                 }
             }, {passive: true});
 
@@ -686,26 +655,12 @@
                 } else if (diff < -threshold) {
                     // 右スワイプ：Web検索
                     const searchQuery = item.dataset.search || item.dataset.title;
-                    openSearchPanel(searchQuery);
+                    window.open(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`, '_blank');
                 }
                 resetSwipe();
             });
         });
     }
-
-    function openSearchPanel(query) {
-        // Google検索をiframeで表示（X-Frame-Optionsで拒否される可能性があるため、DuckDuckGoを使用）
-        const encodedQuery = encodeURIComponent(query);
-        // DuckDuckGoはiframe許可されている場合が多い
-        searchFrame.src = `https://duckduckgo.com/?q=${encodedQuery}`;
-        searchTitle.textContent = `検索: ${query}`;
-        searchPanel.classList.add('open');
-    }
-
-    searchClose.addEventListener('click', () => {
-        searchPanel.classList.remove('open');
-        searchFrame.src = 'about:blank';
-    });
 
     function escapeHTML(str) {
         const div = document.createElement('div');
@@ -734,7 +689,6 @@
         `).join('');
     }
 
-    // イベント委譲
     document.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'removeUninteresting') {
             const idx = parseInt(e.target.dataset.index);
@@ -795,7 +749,7 @@
         }
     });
 
-    // 貼り付けイベント
+    // 貼り付け
     document.addEventListener('paste', (e) => {
         if (e.target !== pasteArea) return;
         e.preventDefault();
