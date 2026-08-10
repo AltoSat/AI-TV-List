@@ -17,256 +17,92 @@
         body {
             font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', sans-serif;
             background: #0f0f1a;
-            margin: 0;
-            padding: 0;
-            padding-top: 30px;
-            color: #ddd;
+            margin: 0; padding: 0; padding-top: 30px; color: #ddd;
             overscroll-behavior: none;
-            user-select: none;
-            -webkit-user-select: none;
+            user-select: none; -webkit-user-select: none;
         }
-
         #header {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            background: #1a1a2e;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 16px;
-            z-index: 100;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            position: fixed; top: 0; left: 0; width: 100%; background: #1a1a2e;
+            border-bottom: 1px solid #333; display: flex; justify-content: space-between;
+            align-items: center; padding: 4px 16px; z-index: 100; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
-        #header h1 {
-            font-size: 1.1em;
-            font-weight: 700;
-            color: #8ab4f8;
-            margin: 0;
-        }
-        #menuBtn {
-            background: none;
-            border: none;
-            font-size: 1.5em;
-            cursor: pointer;
-            color: #ccc;
-            padding: 0 4px;
-            line-height: 1;
-        }
-
+        #header h1 { font-size: 1.1em; font-weight: 700; color: #8ab4f8; margin: 0; }
+        #menuBtn { background: none; border: none; font-size: 1.5em; cursor: pointer; color: #ccc; padding: 0 4px; line-height: 1; }
         #menuPanel {
-            display: none;
-            position: fixed;
-            top: 30px; right: 10px;
-            width: 300px;
-            max-width: calc(100vw - 20px);
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            background: #1e1e30;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-            z-index: 200;
-            flex-direction: column;
+            display: none; position: fixed; top: 30px; right: 10px; width: 300px;
+            max-width: calc(100vw - 20px); max-height: calc(100vh - 40px); overflow-y: auto;
+            background: #1e1e30; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+            z-index: 200; flex-direction: column;
         }
         #menuPanel.open { display: flex; }
-
-        .menu-link-row {
-            padding: 10px 12px;
-            border-bottom: 1px solid #333;
-        }
-        .menu-link {
-            color: #8ab4f8;
-            text-decoration: none;
-            font-size: 0.9em;
-            font-weight: 500;
-        }
-
         .menu-tabs {
-            display: flex;
-            border-bottom: 1px solid #333;
-            background: #2a2a3c;
-            border-radius: 12px 12px 0 0;
+            display: flex; border-bottom: 1px solid #333; background: #2a2a3c;
+            border-radius: 12px 12px 0 0; flex-wrap: wrap;
         }
         .menu-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-            color: #aaa;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: 0.2s;
+            flex: 1; text-align: center; padding: 10px 4px; font-size: 0.8em; font-weight: 600;
+            color: #aaa; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.2s; white-space: nowrap;
         }
-        .menu-tab.active {
-            color: #8ab4f8;
-            border-bottom-color: #8ab4f8;
-            background: #1e1e30;
-        }
-        .menu-content {
-            padding: 12px;
-            display: none;
-        }
+        .menu-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; background: #1e1e30; }
+        .menu-content { padding: 12px; display: none; }
         .menu-content.active { display: block; }
-
         textarea, input[type="text"] {
-            width: 100%;
-            border: 1px solid #444;
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 0.9em;
-            background: #2a2a3c;
-            color: #ddd;
-            resize: vertical;
+            width: 100%; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 0.9em;
+            background: #2a2a3c; color: #ddd; resize: vertical;
         }
         .menu-btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 0.9em;
-            cursor: pointer;
-            font-weight: 600;
+            background: #3b82f6; color: white; border: none; padding: 8px 14px; border-radius: 6px;
+            font-size: 0.9em; cursor: pointer; font-weight: 600;
         }
         .menu-btn.secondary { background: #555; color: #ccc; }
         .list-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: 6px;
+            display: flex; align-items: center; gap: 4px; margin-bottom: 6px;
         }
         .list-item input {
-            flex: 1;
-            padding: 6px 8px;
-            background: #2a2a3c;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #ddd;
-            font-size: 0.9em;
+            flex: 1; padding: 6px 8px; background: #2a2a3c; border: 1px solid #444;
+            border-radius: 4px; color: #ddd; font-size: 0.9em; white-space: normal; word-break: break-all;
         }
-        .list-item button {
-            background: none;
-            border: none;
-            color: #f87171;
-            cursor: pointer;
-            font-size: 1.2em;
-            padding: 2px 4px;
-        }
-        .small-btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 10px;
-            font-size: 0.8em;
-            cursor: pointer;
-        }
-
+        .list-item button { background: none; border: none; color: #f87171; cursor: pointer; font-size: 1.2em; padding: 2px 4px; flex-shrink: 0; }
+        .small-btn { background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 10px; font-size: 0.8em; cursor: pointer; }
         #tabs {
-            position: sticky;
-            top: 30px;
-            background: #1a1a2e;
-            border-bottom: 1px solid #333;
-            display: flex;
-            overflow-x: auto;
-            white-space: nowrap;
-            z-index: 90;
-            align-items: center;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            position: sticky; top: 30px; background: #1a1a2e; border-bottom: 1px solid #333;
+            display: flex; overflow-x: auto; white-space: nowrap; z-index: 90; align-items: center;
+            scrollbar-width: none; -ms-overflow-style: none;
         }
         #tabs::-webkit-scrollbar { display: none; }
         .tab {
-            flex: 0 0 auto;
-            padding: 12px 16px;
-            font-size: 0.9em;
-            font-weight: 600;
-            color: #888;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: 0.2s;
-            line-height: 1.2;
+            flex: 0 0 auto; padding: 12px 16px; font-size: 0.9em; font-weight: 600; color: #888;
+            cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; line-height: 1.2;
         }
         .tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
-
-        #content {
-            padding: 8px 16px 24px;
-            user-select: text;
-            -webkit-user-select: text;
-        }
+        #content { padding: 8px 16px 24px; user-select: text; -webkit-user-select: text; }
         .program-group {
-            background: #1e1e30;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            overflow: hidden;
+            background: #1e1e30; border-radius: 10px; margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4); overflow: hidden;
         }
         .program-item {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-            padding: 12px;
-            border-bottom: 1px solid #333;
-            position: relative;
-            touch-action: pan-y;
+            display: flex; gap: 12px; align-items: flex-start; padding: 12px;
+            border-bottom: 1px solid #333; position: relative; touch-action: pan-y;
             transition: background-color 0.15s, transform 0.3s;
         }
         .program-item:last-child { border-bottom: none; }
-        .program-item.uninteresting {
-            background: #000;
-        }
-        .program-time {
-            font-weight: 700;
-            min-width: 50px;
-            color: #8ab4f8;
-            font-size: 1em;
-            padding-top: 2px;
-        }
+        .program-item.uninteresting { background: #000; }
+        .program-time { font-weight: 700; min-width: 50px; color: #8ab4f8; font-size: 1em; padding-top: 2px; }
         .program-body { flex: 1; }
-        .program-title {
-            font-weight: 600;
-            font-size: 1em;
-            margin-bottom: 4px;
-            line-height: 1.4;
-            transition: opacity 0.2s;
+        .program-title { font-weight: 600; font-size: 1em; margin-bottom: 4px; line-height: 1.4; transition: opacity 0.2s; }
+        .program-desc { font-size: 0.9em; color: #aaa; line-height: 1.5; display: block; }
+        .program-item.uninteresting .program-title { opacity: 0.5; }
+        .program-item.uninteresting .program-desc { display: none; }
+        .program-item.uninteresting .program-desc.show { display: block; }
+        mark { background: #fbbf24; color: #000; padding: 0 2px; border-radius: 2px; font-weight: 600; }
+        .empty-message { text-align: center; color: #888; padding: 40px 20px; font-size: 1em; }
+        .swiping-left { background-color: #2c2c3a !important; transform: translateX(-20px); }
+        .swiping-right { background-color: #2c2c3a !important; transform: translateX(20px); }
+        .file-input-label {
+            display: inline-block; background: #3b82f6; color: white; padding: 8px 14px;
+            border-radius: 6px; font-size: 0.9em; cursor: pointer; font-weight: 600; text-align: center;
         }
-        .program-desc {
-            font-size: 0.9em;
-            color: #aaa;
-            line-height: 1.5;
-            display: block;
-        }
-        .program-item.uninteresting .program-title {
-            opacity: 0.5;
-        }
-        .program-item.uninteresting .program-desc {
-            display: none;
-        }
-        .program-item.uninteresting .program-desc.show {
-            display: block;
-        }
-        mark {
-            background: #fbbf24;
-            color: #000;
-            padding: 0 2px;
-            border-radius: 2px;
-            font-weight: 600;
-        }
-        .empty-message {
-            text-align: center;
-            color: #888;
-            padding: 40px 20px;
-            font-size: 1em;
-        }
-        .swiping-left {
-            background-color: #2c2c3a !important;
-            transform: translateX(-20px);
-        }
-        .swiping-right {
-            background-color: #2c2c3a !important;
-            transform: translateX(20px);
-        }
+        .hidden-file-input { display: none; }
     </style>
 </head>
 <body>
@@ -281,16 +117,18 @@
         <div class="menu-tab active" data-tab="tab-paste">📋 貼り付け</div>
         <div class="menu-tab" data-tab="tab-ignore">🙈 興味なし</div>
         <div class="menu-tab" data-tab="tab-highlight">🔍 強調</div>
+        <div class="menu-tab" data-tab="tab-backup">💾 バックアップ</div>
     </div>
 
+    <!-- 貼り付けタブ -->
     <div class="menu-content active" id="tab-paste">
         <textarea id="pasteArea" placeholder="Gガイドの1日分をコピーして貼り付け"></textarea>
-        <button id="clearBtn" class="menu-btn secondary" style="margin-top:8px;">🗑️ 全データ消去</button>
-        <div class="menu-link-row" style="border-bottom:none; padding:10px 0 0 0;">
+        <div style="margin-top:10px;">
             <button id="openGguideBtn" class="menu-btn" style="width:100%;">🔗 Gガイド番組表を開く</button>
         </div>
     </div>
 
+    <!-- 興味なしタブ -->
     <div class="menu-content" id="tab-ignore">
         <div id="uninterestingList"></div>
         <div style="display:flex; gap:6px; margin-top:10px;">
@@ -299,6 +137,7 @@
         </div>
     </div>
 
+    <!-- 強調タブ -->
     <div class="menu-content" id="tab-highlight">
         <div id="highlightList"></div>
         <div style="display:flex; gap:6px; margin-top:10px;">
@@ -306,35 +145,40 @@
             <button id="addHighlightBtn" class="small-btn">追加</button>
         </div>
     </div>
+
+    <!-- バックアップタブ -->
+    <div class="menu-content" id="tab-backup">
+        <button id="exportBtn" class="menu-btn" style="width:100%; margin-bottom:10px;">📤 データをエクスポート</button>
+        <label for="importFile" class="file-input-label" style="width:100%; display:block; margin-bottom:10px;">📥 データをインポート</label>
+        <input type="file" id="importFile" class="hidden-file-input" accept=".json">
+        <button id="clearBtn" class="menu-btn secondary" style="width:100%;">🗑️ 全データ消去</button>
+    </div>
 </div>
 
 <nav id="tabs"></nav>
 <main id="content"></main>
 
+<!-- 外部リンク用の隠しアンカー -->
+<a id="hiddenLink" target="_blank" rel="noopener" style="display:none;"></a>
+
 <script>
-    // 改善された Service Worker (すぐに有効化)
+    // Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             const swCode = `
-                const CACHE = 'tv-ai-v15';
-                self.addEventListener('install', e => {
-                    self.skipWaiting(); // すぐに有効化
-                    e.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['.'])));
-                });
-                self.addEventListener('activate', e => {
-                    e.waitUntil(clients.claim()); // 制御を即座に取得
-                });
-                self.addEventListener('fetch', e => {
-                    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
-                });
+                const CACHE = 'tv-ai-stable';
+                self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(['.']))); });
+                self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
+                self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); });
             `;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
     }
 
-    const STORAGE_KEY = 'tvProgramsV15';
-    const SETTINGS_KEY = 'tvSettingsV15';
+    // 永続化キー（変更しない）
+    const STORAGE_KEY = 'tvPrograms';
+    const SETTINGS_KEY = 'tvSettings';
     const CHANNEL_ORDER = ["HBC", "NHK Eテレ", "NHK総合", "STV", "HTB", "TVh", "UHB"];
 
     let programs = [];
@@ -343,7 +187,6 @@
     let uninterestingByChannel = {};
     let highlightWords = [];
 
-    // DOM
     const menuBtn = document.getElementById('menuBtn');
     const menuPanel = document.getElementById('menuPanel');
     const pasteArea = document.getElementById('pasteArea');
@@ -351,26 +194,23 @@
     const openGguideBtn = document.getElementById('openGguideBtn');
     const tabsNav = document.getElementById('tabs');
     const contentDiv = document.getElementById('content');
+    const hiddenLink = document.getElementById('hiddenLink');
+    const exportBtn = document.getElementById('exportBtn');
+    const importFile = document.getElementById('importFile');
 
     function getCurrentUninteresting() {
-        if (!uninterestingByChannel[selectedChannel]) {
-            uninterestingByChannel[selectedChannel] = [];
-        }
+        if (!uninterestingByChannel[selectedChannel]) uninterestingByChannel[selectedChannel] = [];
         return uninterestingByChannel[selectedChannel];
     }
 
-    // メニュー開閉
     menuBtn.addEventListener('click', () => {
         menuPanel.classList.toggle('open');
-        if (menuPanel.classList.contains('open')) {
-            renderUninterestingList();
-        }
+        if (menuPanel.classList.contains('open')) renderUninterestingList();
     });
     document.addEventListener('click', (e) => {
         if (!menuPanel.contains(e.target) && e.target !== menuBtn) menuPanel.classList.remove('open');
     });
 
-    // メニュータブ切り替え
     document.querySelectorAll('.menu-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
@@ -382,17 +222,54 @@
         });
     });
 
-    // Gガイドをシステムブラウザで開く
-    openGguideBtn.addEventListener('click', () => {
-        window.open('https://bangumi.org/epg/td?ggm_group_id=1', '_blank');
-    });
-
-    // 検索もシステムブラウザで開く
-    function openSearch(query) {
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+    // 外部リンク
+    function openExternal(url) {
+        hiddenLink.href = url;
+        hiddenLink.click();
     }
 
-    // 設定管理（保存確認付き）
+    openGguideBtn.addEventListener('click', () => {
+        openExternal('https://bangumi.org/epg/td?ggm_group_id=1');
+    });
+
+    function openSearch(query) {
+        openExternal(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+    }
+
+    // データ移行（旧キーからの自動復元）
+    function migrateOldData() {
+        const oldProgramKeys = ['tvProgramsV13', 'tvProgramsV14', 'tvProgramsV15', 'tvProgramsV16'];
+        for (const key of oldProgramKeys) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                try {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr) && arr.length > 0) {
+                        localStorage.setItem(STORAGE_KEY, raw);
+                        localStorage.removeItem(key);
+                        console.log(`データを ${key} から移行しました`);
+                        break;
+                    }
+                } catch (e) {}
+            }
+        }
+        const oldSettingsKeys = ['tvSettingsV13', 'tvSettingsV14', 'tvSettingsV15', 'tvSettingsV16'];
+        for (const key of oldSettingsKeys) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                try {
+                    const data = JSON.parse(raw);
+                    if (data && (data.uninterestingByChannel || data.highlight)) {
+                        localStorage.setItem(SETTINGS_KEY, raw);
+                        localStorage.removeItem(key);
+                        console.log(`設定を ${key} から移行しました`);
+                        break;
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
     function loadSettings() {
         try {
             const raw = localStorage.getItem(SETTINGS_KEY);
@@ -401,25 +278,13 @@
                 uninterestingByChannel = data.uninterestingByChannel || {};
                 highlightWords = data.highlight || [];
             }
-        } catch (e) {
-            console.warn('設定の読み込みに失敗しました', e);
-            uninterestingByChannel = {};
-            highlightWords = [];
-        }
+        } catch (e) {}
     }
     function saveSettings() {
         try {
-            const json = JSON.stringify({
-                uninterestingByChannel,
-                highlight: highlightWords
-            });
+            const json = JSON.stringify({ uninterestingByChannel, highlight: highlightWords });
             localStorage.setItem(SETTINGS_KEY, json);
-            const test = localStorage.getItem(SETTINGS_KEY);
-            if (test !== json) throw new Error('設定の保存に失敗しました');
-        } catch (e) {
-            alert('設定の保存に失敗しました。空き容量を確認してください。\nもしファイルを更新した場合は、再度アプリを開き直してみてください。');
-            console.error(e);
-        }
+        } catch (e) { alert('設定の保存に失敗しました。'); }
         renderAll();
     }
 
@@ -434,61 +299,82 @@
                 rawStart: new Date(obj.rawStart),
                 rawEnd: new Date(obj.rawEnd)
             }));
-        } catch (e) {
-            console.warn('番組データの読み込みに失敗しました', e);
-            return null;
-        }
+        } catch (e) { return null; }
     }
     function savePrograms() {
         try {
             const data = programs.map(p => ({
-                channel: p.channel,
-                title: p.title,
-                description: p.description,
-                displayDate: p.displayDate.toISOString(),
-                rawStart: p.rawStart.toISOString(),
-                rawEnd: p.rawEnd.toISOString()
+                channel: p.channel, title: p.title, description: p.description,
+                displayDate: p.displayDate.toISOString(), rawStart: p.rawStart.toISOString(), rawEnd: p.rawEnd.toISOString()
             }));
-            const json = JSON.stringify(data);
-            localStorage.setItem(STORAGE_KEY, json);
-            const test = localStorage.getItem(STORAGE_KEY);
-            if (test !== json) throw new Error('番組データの保存に失敗しました');
-        } catch (e) {
-            alert('番組データの保存に失敗しました。空き容量を確認してください。');
-            console.error(e);
-        }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) { alert('番組データの保存に失敗しました。'); }
     }
 
-    // タイトルの装飾記号を除去
+    // エクスポート/インポート
+    function exportAllData() {
+        const exportData = {
+            programs: programs.map(p => ({
+                channel: p.channel, title: p.title, description: p.description,
+                displayDate: p.displayDate.toISOString(), rawStart: p.rawStart.toISOString(), rawEnd: p.rawEnd.toISOString()
+            })),
+            settings: { uninterestingByChannel, highlightWords }
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tv-ai-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    exportBtn.addEventListener('click', exportAllData);
+    importFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (data.programs && Array.isArray(data.programs) && data.settings) {
+                    programs = data.programs.map(obj => ({...obj, displayDate: new Date(obj.displayDate), rawStart: new Date(obj.rawStart), rawEnd: new Date(obj.rawEnd)}));
+                    uninterestingByChannel = data.settings.uninterestingByChannel || {};
+                    highlightWords = data.settings.highlightWords || [];
+                    displayDate = programs.length > 0 ? programs[0].displayDate : null;
+                    selectedChannel = CHANNEL_ORDER[0];
+                    savePrograms(); saveSettings();
+                    renderAll(); menuPanel.classList.remove('open');
+                    alert('インポートが完了しました。');
+                } else { alert('ファイル形式が正しくありません。'); }
+            } catch (err) { alert('インポートに失敗しました。'); }
+        };
+        reader.readAsText(file);
+        importFile.value = '';
+    });
+
+    // パース関連
     function getBaseTitle(fullTitle) {
         const idx = fullTitle.search(/[🈑🈓【]/);
         return idx === -1 ? fullTitle : fullTitle.substring(0, idx).trim();
     }
-
-    // ハイライト適用
     function applyHighlight(text) {
         return highlightWords.reduce((str, word) => {
             const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
             return str.replace(regex, '<mark>$1</mark>');
         }, text);
     }
-
     function descriptionContainsHighlight(desc) {
         if (!desc || highlightWords.length === 0) return false;
         return highlightWords.some(word => desc.includes(word));
     }
-
-    // パース
     function parseProgramsFromHTML(htmlString) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         const ulElements = doc.querySelectorAll('ul[id^="program_line_"]');
         if (ulElements.length === 0) throw new Error('番組表のul要素が見つかりません。');
-
         const channelAssign = [];
         for (let i = 0; i < Math.min(ulElements.length, CHANNEL_ORDER.length); i++) channelAssign.push(CHANNEL_ORDER[i]);
         for (let i = channelAssign.length; i < ulElements.length; i++) channelAssign.push(`Ch.${i+1}`);
-
         const all = [];
         for (let i = 0; i < ulElements.length; i++) {
             const ul = ulElements[i];
@@ -501,13 +387,11 @@
                 const detailEl = li.querySelector('.program_detail');
                 const title = titleEl ? titleEl.textContent.trim() : '(タイトルなし)';
                 const desc = detailEl ? detailEl.textContent.trim() : '';
-
                 const parseTime = str => new Date(+str.substring(0,4), +str.substring(4,6)-1, +str.substring(6,8), +str.substring(8,10), +str.substring(10,12));
                 all.push({ channel: ch, title, description: desc, rawStart: parseTime(s), rawEnd: parseTime(e) });
             });
         }
         if (all.length === 0) return [];
-
         let baseDate = null;
         for (const p of all) if (p.rawStart.getHours() >= 4) { baseDate = new Date(p.rawStart); baseDate.setHours(0,0,0,0); break; }
         if (!baseDate) { baseDate = new Date(all[0].rawStart); baseDate.setHours(0,0,0,0); }
@@ -515,7 +399,6 @@
         return all;
     }
 
-    // レンダリング
     function renderAll() {
         if (programs.length === 0) {
             tabsNav.innerHTML = '';
@@ -532,23 +415,15 @@
         const available = [...new Set(programs.map(p => p.channel))];
         const ordered = CHANNEL_ORDER.filter(ch => available.includes(ch));
         for (const ch of available) if (!ordered.includes(ch)) ordered.push(ch);
-
         tabsNav.innerHTML = '';
         ordered.forEach(ch => {
             const tab = document.createElement('div');
             tab.className = 'tab' + (ch === selectedChannel ? ' active' : '');
             tab.textContent = ch;
-            tab.addEventListener('click', () => {
-                selectedChannel = ch;
-                renderAll();
-                if (menuPanel.classList.contains('open')) renderUninterestingList();
-            });
+            tab.addEventListener('click', () => { selectedChannel = ch; renderAll(); if (menuPanel.classList.contains('open')) renderUninterestingList(); });
             tabsNav.appendChild(tab);
         });
-        if (!ordered.includes(selectedChannel)) {
-            selectedChannel = ordered[0] || CHANNEL_ORDER[0];
-            renderAll();
-        }
+        if (!ordered.includes(selectedChannel)) { selectedChannel = ordered[0] || CHANNEL_ORDER[0]; renderAll(); }
     }
 
     function renderProgramsForChannel() {
@@ -558,7 +433,6 @@
             return;
         }
         const uninterestingList = getCurrentUninteresting();
-
         let html = '';
         if (displayDate) {
             const dateStr = displayDate.toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
@@ -568,138 +442,76 @@
         filtered.forEach(p => {
             const startStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
             const baseTitle = getBaseTitle(p.title);
-            const isUninteresting = uninterestingList.some(word => baseTitle.startsWith(word));
+            const isUserUninteresting = uninterestingList.some(word => baseTitle.startsWith(word));
+            const duration = (p.rawEnd - p.rawStart) / 60000;
+            const isShort = duration <= 5 && duration >= 0;
+            const isUninteresting = isUserUninteresting || isShort;
             const itemClass = isUninteresting ? 'program-item uninteresting' : 'program-item';
-
             const highlightedTitle = applyHighlight(escapeHTML(p.title));
             const descText = p.description || '';
             const highlightedDesc = applyHighlight(escapeHTML(descText));
-
-            let showDesc = false;
-            if (isUninteresting && descriptionContainsHighlight(descText)) {
-                showDesc = true;
-            } else if (!isUninteresting) {
-                showDesc = true;
-            }
-
-            const descDisplay = showDesc
-                ? `<div class="program-desc${isUninteresting ? ' show' : ''}">${highlightedDesc}</div>`
-                : `<div class="program-desc">${highlightedDesc}</div>`;
-
-            html += `
-                <div class="${itemClass}" data-title="${escapeHTML(baseTitle)}" data-channel="${escapeHTML(selectedChannel)}" data-search="${escapeHTML(baseTitle)}">
-                    <div class="program-time">${startStr}</div>
-                    <div class="program-body">
-                        <div class="program-title">${highlightedTitle}</div>
-                        ${descDisplay}
-                    </div>
-                </div>
-            `;
+            let showDesc = (isUninteresting && descriptionContainsHighlight(descText)) || !isUninteresting;
+            const descDisplay = showDesc ? `<div class="program-desc${isUninteresting ? ' show' : ''}">${highlightedDesc}</div>` : `<div class="program-desc">${highlightedDesc}</div>`;
+            html += `<div class="${itemClass}" data-title="${escapeHTML(baseTitle)}" data-channel="${escapeHTML(selectedChannel)}" data-search="${escapeHTML(baseTitle)}">
+                        <div class="program-time">${startStr}</div>
+                        <div class="program-body">
+                            <div class="program-title">${highlightedTitle}</div>
+                            ${descDisplay}
+                        </div>
+                    </div>`;
         });
         html += '</div>';
         contentDiv.innerHTML = html;
-
         document.querySelectorAll('.program-item.uninteresting .program-title').forEach(titleEl => {
-            titleEl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const desc = titleEl.parentElement.querySelector('.program-desc');
-                if (desc) desc.classList.toggle('show');
-            });
+            titleEl.addEventListener('click', (e) => { e.stopPropagation(); const desc = titleEl.parentElement.querySelector('.program-desc'); if (desc) desc.classList.toggle('show'); });
         });
-
         attachSwipeEvents();
     }
 
     function attachSwipeEvents() {
         const items = document.querySelectorAll('.program-item');
         items.forEach(item => {
-            let startX = 0;
-            let startY = 0;
+            let startX = 0, startY = 0;
             const threshold = 80;
-
-            const resetSwipe = () => {
-                item.classList.remove('swiping-left', 'swiping-right');
-            };
-
+            const resetSwipe = () => { item.classList.remove('swiping-left', 'swiping-right'); };
             item.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                resetSwipe();
+                startX = e.touches[0].clientX; startY = e.touches[0].clientY; resetSwipe();
             }, {passive: true});
-
             item.addEventListener('touchmove', (e) => {
-                if (window.getSelection().toString().length > 0) {
-                    resetSwipe();
-                    return;
-                }
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                const diffX = Math.abs(currentX - startX);
-                const diffY = Math.abs(currentY - startY);
-
-                if (diffY > diffX) {
-                    resetSwipe();
-                    return;
-                }
-
+                if (window.getSelection().toString().length > 0) { resetSwipe(); return; }
+                const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
+                const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
+                if (diffY > diffX) { resetSwipe(); return; }
                 const deltaX = startX - currentX;
-                if (deltaX > 20) {
-                    item.classList.add('swiping-left');
-                    item.classList.remove('swiping-right');
-                } else if (deltaX < -20) {
-                    item.classList.add('swiping-right');
-                    item.classList.remove('swiping-left');
-                } else {
-                    resetSwipe();
-                }
+                if (deltaX > 20) { item.classList.add('swiping-left'); item.classList.remove('swiping-right'); }
+                else if (deltaX < -20) { item.classList.add('swiping-right'); item.classList.remove('swiping-left'); }
+                else { resetSwipe(); }
             }, {passive: true});
-
             item.addEventListener('touchend', (e) => {
-                if (window.getSelection().toString().length > 0) {
-                    resetSwipe();
-                    return;
-                }
-                const endX = e.changedTouches[0].clientX;
-                const endY = e.changedTouches[0].clientY;
-                const diffX = Math.abs(endX - startX);
-                const diffY = Math.abs(endY - startY);
-
-                if (diffY > diffX) {
-                    resetSwipe();
-                    return;
-                }
-
+                if (window.getSelection().toString().length > 0) { resetSwipe(); return; }
+                const endX = e.changedTouches[0].clientX, endY = e.changedTouches[0].clientY;
+                const diffX = Math.abs(endX - startX), diffY = Math.abs(endY - startY);
+                if (diffY > diffX) { resetSwipe(); return; }
                 const diff = startX - endX;
                 if (diff > threshold) {
-                    const baseTitle = item.dataset.title;
-                    const channel = item.dataset.channel;
+                    const baseTitle = item.dataset.title, channel = item.dataset.channel;
                     if (!baseTitle || !channel) return;
-
                     if (!uninterestingByChannel[channel]) uninterestingByChannel[channel] = [];
                     const list = uninterestingByChannel[channel];
                     const index = list.indexOf(baseTitle);
-                    if (index === -1) {
-                        list.push(baseTitle);
-                    } else {
-                        list.splice(index, 1);
-                    }
-                    saveSettings();
-                    renderAll();
+                    if (index === -1) list.push(baseTitle);
+                    else list.splice(index, 1);
+                    saveSettings(); renderAll();
                 } else if (diff < -threshold) {
-                    const searchQuery = item.dataset.search || item.dataset.title;
-                    openSearch(searchQuery);
+                    openSearch(item.dataset.search || item.dataset.title);
                 }
                 resetSwipe();
             });
         });
     }
 
-    function escapeHTML(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
+    function escapeHTML(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
     function renderUninterestingList() {
         const list = getCurrentUninteresting();
@@ -708,39 +520,30 @@
             <div class="list-item">
                 <input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="uninteresting" class="edit-word">
                 <button data-action="removeUninteresting" data-index="${idx}">✕</button>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
-
     function renderHighlightList() {
         const div = document.getElementById('highlightList');
         div.innerHTML = highlightWords.map((word, idx) => `
             <div class="list-item">
                 <input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="highlight" class="edit-word">
                 <button data-action="removeHighlight" data-index="${idx}">✕</button>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
     document.addEventListener('click', (e) => {
         if (e.target.dataset.action === 'removeUninteresting') {
             const idx = parseInt(e.target.dataset.index);
             const list = getCurrentUninteresting();
-            list.splice(idx, 1);
-            saveSettings();
-            renderUninterestingList();
+            list.splice(idx, 1); saveSettings(); renderUninterestingList();
         } else if (e.target.dataset.action === 'removeHighlight') {
             const idx = parseInt(e.target.dataset.index);
-            highlightWords.splice(idx, 1);
-            saveSettings();
-            renderHighlightList();
+            highlightWords.splice(idx, 1); saveSettings(); renderHighlightList();
         }
     });
-
     document.addEventListener('input', (e) => {
         if (e.target.classList.contains('edit-word')) {
-            const idx = parseInt(e.target.dataset.index);
-            const type = e.target.dataset.type;
+            const idx = parseInt(e.target.dataset.index), type = e.target.dataset.type;
             const newVal = e.target.value.trim();
             if (newVal === '') return;
             if (type === 'uninteresting') {
@@ -754,35 +557,19 @@
         }
     });
 
-    document.getElementById('newUninteresting').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('addUninterestingBtn').click();
-    });
-    document.getElementById('newHighlight').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') document.getElementById('addHighlightBtn').click();
-    });
-
+    document.getElementById('newUninteresting').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addUninterestingBtn').click(); });
+    document.getElementById('newHighlight').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addHighlightBtn').click(); });
     document.getElementById('addUninterestingBtn').addEventListener('click', () => {
         const input = document.getElementById('newUninteresting');
         const val = input.value.trim();
-        if (val && !getCurrentUninteresting().includes(val)) {
-            getCurrentUninteresting().push(val);
-            saveSettings();
-            renderUninterestingList();
-            input.value = '';
-        }
+        if (val && !getCurrentUninteresting().includes(val)) { getCurrentUninteresting().push(val); saveSettings(); renderUninterestingList(); input.value = ''; }
     });
     document.getElementById('addHighlightBtn').addEventListener('click', () => {
         const input = document.getElementById('newHighlight');
         const val = input.value.trim();
-        if (val && !highlightWords.includes(val)) {
-            highlightWords.push(val);
-            saveSettings();
-            renderHighlightList();
-            input.value = '';
-        }
+        if (val && !highlightWords.includes(val)) { highlightWords.push(val); saveSettings(); renderHighlightList(); input.value = ''; }
     });
 
-    // 貼り付け
     document.addEventListener('paste', (e) => {
         if (e.target !== pasteArea) return;
         e.preventDefault();
@@ -791,48 +578,31 @@
         const htmlData = clipboardData.getData('text/html');
         const plainText = clipboardData.getData('text/plain');
         pasteArea.value = plainText || '';
-        if (!htmlData) {
-            alert('HTML形式のデータが取得できませんでした。Gガイドの番組表をコピーしてください。');
-            return;
-        }
+        if (!htmlData) { alert('HTML形式のデータが取得できませんでした。'); return; }
         try {
             const parsed = parseProgramsFromHTML(htmlData);
-            if (parsed.length === 0) {
-                alert('番組データを抽出できませんでした。');
-                return;
-            }
-            const unique = [];
-            const seen = new Set();
+            if (parsed.length === 0) { alert('番組データを抽出できませんでした。'); return; }
+            const unique = []; const seen = new Set();
             for (const p of parsed) {
                 const id = `${p.rawStart.toISOString()}_${p.channel}_${p.title}`;
                 if (!seen.has(id)) { seen.add(id); unique.push(p); }
             }
-            programs = unique;
-            displayDate = programs[0]?.displayDate || null;
+            programs = unique; displayDate = programs[0]?.displayDate || null;
             selectedChannel = CHANNEL_ORDER[0];
-            savePrograms();
-            renderAll();
-            pasteArea.value = '';
-            menuPanel.classList.remove('open');
-        } catch (err) {
-            alert('解析エラー: ' + err.message);
-            console.error(err);
-        }
+            savePrograms(); renderAll(); pasteArea.value = ''; menuPanel.classList.remove('open');
+        } catch (err) { alert('解析エラー: ' + err.message); }
     });
 
     clearBtn.addEventListener('click', () => {
         if (confirm('番組データ・興味なし・強調ワードをすべて消去しますか？')) {
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(SETTINGS_KEY);
-            programs = []; displayDate = null;
-            uninterestingByChannel = {}; highlightWords = [];
-            renderAll();
-            menuPanel.classList.remove('open');
+            localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY);
+            programs = []; displayDate = null; uninterestingByChannel = {}; highlightWords = [];
+            renderAll(); menuPanel.classList.remove('open');
         }
     });
 
-    // 初期化
     window.addEventListener('load', () => {
+        migrateOldData(); // 旧データの自動移行
         loadSettings();
         const saved = loadPrograms();
         if (saved && saved.length > 0) {
