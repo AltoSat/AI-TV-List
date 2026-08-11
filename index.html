@@ -21,6 +21,9 @@
             overscroll-behavior: none;
             user-select: none; -webkit-user-select: none;
         }
+        body.menu-open {
+            overflow: hidden;
+        }
         #header {
             position: fixed; top: 0; left: 0; width: 100%; background: #1a1a2e;
             border-bottom: 1px solid #333; display: flex; justify-content: space-between;
@@ -264,9 +267,9 @@
     </div>
     <div class="menu-tabs">
         <div class="menu-tab" data-tab="tab-reserved">予約</div>
+        <div class="menu-tab active" data-tab="tab-ignore">不要</div>
         <div class="menu-tab" data-tab="tab-highlight">強調</div>
         <div class="menu-tab" data-tab="tab-exclude">除外</div>
-        <div class="menu-tab active" data-tab="tab-ignore">不要</div>
         <div class="menu-tab" data-tab="tab-paste">取込</div>
         <div class="menu-tab" data-tab="tab-backup">保存</div>
     </div>
@@ -518,10 +521,22 @@
         return all;
     }
 
+    function updateChannelTabLabels() {
+        const tabReserved = document.querySelector('.menu-tab[data-tab="tab-reserved"]');
+        const tabIgnore = document.querySelector('.menu-tab[data-tab="tab-ignore"]');
+        if (tabReserved) {
+            tabReserved.innerHTML = `予約<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
+        }
+        if (tabIgnore) {
+            tabIgnore.innerHTML = `不要<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
+        }
+    }
+
     function renderAll() {
         try {
             if (!isWithinRange(selectedDate)) { selectedDate = new Date(); selectedDate.setHours(0,0,0,0); }
             renderDateTabs();
+            updateChannelTabLabels();
             if (showFavorites) { renderFavoritesForDate(); return; }
             if (showHighlighted) { renderHighlightedForDate(); return; }
             const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
@@ -898,6 +913,7 @@
             programs.push(...unique);
             savePrograms(); selectedDate = new Date(targetDate); selectedChannel = CHANNEL_ORDER[0];
             showFavorites = false; showHighlighted = false; renderAll(); pasteArea.value = ''; menuPanel.classList.remove('open');
+            document.body.classList.remove('menu-open');
         } catch (err) { alert('解析エラー: ' + err.message); }
     }
 
@@ -945,7 +961,9 @@
                     highlightWords = wordsToObjects(data.settings.highlightWords || []);
                     favorites = data.settings.favorites || [];
                     showUninteresting = data.settings.showUninteresting !== false;
-                    savePrograms(); saveSettings(); renderAll(); menuPanel.classList.remove('open'); alert('インポート完了');
+                    savePrograms(); saveSettings(); renderAll(); menuPanel.classList.remove('open');
+                    document.body.classList.remove('menu-open');
+                    alert('インポート完了');
                 } else alert('形式エラー');
             } catch(e) { alert('インポート失敗'); }
         };
@@ -958,11 +976,20 @@
             showUninteresting = true; showFavorites = false; showHighlighted = false;
             selectedDate = new Date(); selectedDate.setHours(0,0,0,0); selectedChannel = CHANNEL_ORDER[0];
             renderAll(); menuPanel.classList.remove('open');
+            document.body.classList.remove('menu-open');
         }
     });
 
-    menuBtn.addEventListener('click', () => { menuPanel.classList.add('open'); renderUninterestingList(); renderReservedList(); renderExcludeList(); });
-    menuCloseBtn.addEventListener('click', () => { menuPanel.classList.remove('open'); });
+    menuBtn.addEventListener('click', () => {
+        menuPanel.classList.add('open');
+        document.body.classList.add('menu-open');
+        updateChannelTabLabels();
+        renderUninterestingList(); renderReservedList(); renderExcludeList();
+    });
+    menuCloseBtn.addEventListener('click', () => {
+        menuPanel.classList.remove('open');
+        document.body.classList.remove('menu-open');
+    });
     document.querySelectorAll('.menu-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
@@ -988,6 +1015,7 @@
         selectedChannel = CHANNEL_ORDER[0];
         saveSettings();
         updateHeaderButtons();
+        updateChannelTabLabels();
         renderAll();
     });
 </script>
