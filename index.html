@@ -65,11 +65,25 @@
         .menu-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; background: #1e1e30; }
 
         #menuContentWrapper {
-            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px;
+            flex: 1; overflow: hidden; display: flex; flex-direction: column;
         }
 
-        .menu-content { display: none; }
-        .menu-content.active { display: block; }
+        .menu-content {
+            display: none; flex-direction: column; height: 100%;
+        }
+        .menu-content.active {
+            display: flex;
+        }
+
+        .list-container {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 12px 12px 30px 12px;
+        }
+
+        .input-area {
+            padding: 8px 12px; background: #1e1e30; border-bottom: 1px solid #333;
+            flex-shrink: 0; display: flex; gap: 6px;
+        }
 
         textarea, input[type="text"] {
             width: 100%; border: 1px solid #444; border-radius: 6px; padding: 8px;
@@ -204,42 +218,44 @@
         </div>
 
         <div class="menu-content active" id="tab-ignore">
-            <div id="uninterestingList"></div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
+            <div class="input-area">
                 <input type="text" id="newUninteresting" placeholder="追加する番組名（先頭一致）">
                 <button id="addUninterestingBtn" class="small-btn">追加</button>
             </div>
+            <div id="uninterestingList" class="list-container"></div>
         </div>
 
         <div class="menu-content" id="tab-reserved">
-            <div id="reservedList"></div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
+            <div class="input-area">
                 <input type="text" id="newReserved" placeholder="追加する番組名（先頭一致）">
                 <button id="addReservedBtn" class="small-btn">追加</button>
             </div>
+            <div id="reservedList" class="list-container"></div>
         </div>
 
         <div class="menu-content" id="tab-exclude">
-            <div id="excludeList"></div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
+            <div class="input-area">
                 <input type="text" id="newExclude" placeholder="除外するキーワード（部分一致）">
                 <button id="addExcludeBtn" class="small-btn">追加</button>
             </div>
+            <div id="excludeList" class="list-container"></div>
         </div>
 
         <div class="menu-content" id="tab-highlight">
-            <div id="highlightList"></div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
+            <div class="input-area">
                 <input type="text" id="newHighlight" placeholder="強調するキーワード">
                 <button id="addHighlightBtn" class="small-btn">追加</button>
             </div>
+            <div id="highlightList" class="list-container"></div>
         </div>
 
         <div class="menu-content" id="tab-backup">
-            <button id="exportBtn" class="menu-btn" style="margin-bottom:10px;">データをエクスポート</button>
-            <label for="importFile" class="file-input-label" style="margin-bottom:10px;">データをインポート</label>
-            <input type="file" id="importFile" class="hidden-file-input" accept=".json">
-            <button id="clearBtn" class="menu-btn secondary">全データ消去</button>
+            <div class="list-container" style="padding-top:20px;">
+                <button id="exportBtn" class="menu-btn" style="margin-bottom:10px;">データをエクスポート</button>
+                <label for="importFile" class="file-input-label" style="margin-bottom:10px;">データをインポート</label>
+                <input type="file" id="importFile" class="hidden-file-input" accept=".json">
+                <button id="clearBtn" class="menu-btn secondary">全データ消去</button>
+            </div>
         </div>
     </div>
 </div>
@@ -405,11 +421,36 @@
     function openSearch(query) { openExternal(`https://www.google.com/search?q=${encodeURIComponent(query)}`); }
 
     function getBaseTitle(fullTitle) {
-        const parts = fullTitle.split(/[🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻【]/);
-        for (const part of parts) {
-            const trimmed = part.trim();
-            if (trimmed) return trimmed;
+        const separators = "🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻【▽▼#（★第】";
+        
+        let firstIdx = -1;
+        for (const ch of separators) {
+            const idx = fullTitle.indexOf(ch);
+            if (idx !== -1 && (firstIdx === -1 || idx < firstIdx)) {
+                firstIdx = idx;
+            }
         }
+        
+        if (firstIdx === -1) {
+            return fullTitle;
+        }
+        
+        if (firstIdx > 0) {
+            return fullTitle.substring(0, firstIdx).trim();
+        }
+        
+        let secondIdx = -1;
+        for (const ch of separators) {
+            const idx = fullTitle.indexOf(ch, 1);
+            if (idx !== -1 && (secondIdx === -1 || idx < secondIdx)) {
+                secondIdx = idx;
+            }
+        }
+        
+        if (secondIdx !== -1) {
+            return fullTitle.substring(0, secondIdx).trim();
+        }
+        
         return fullTitle;
     }
 
@@ -501,7 +542,7 @@
             const tab = document.createElement('div');
             tab.className = 'date-tab' + (date.getTime() === selectedDate.getTime() ? ' active' : '');
             tab.textContent = getDisplayDateStr(date);
-            tab.addEventListener('click', () => { selectedDate = new Date(date); if (!showFavorites && !showHighlighted) selectedChannel = CHANNEL_ORDER[0]; renderAll(); });
+            tab.addEventListener('click', () => { selectedDate = new Date(date); renderAll(); });
             dateTabsDiv.appendChild(tab);
         });
     }
