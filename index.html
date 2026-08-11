@@ -21,9 +21,7 @@
             overscroll-behavior: none;
             user-select: none; -webkit-user-select: none;
         }
-        body.menu-open {
-            overflow: hidden;
-        }
+        body.menu-open { overflow: hidden; }
         #header {
             position: fixed; top: 0; left: 0; width: 100%; background: #1a1a2e;
             border-bottom: 1px solid #333; display: flex; justify-content: space-between;
@@ -39,136 +37,65 @@
         #menuBtn { color: #ccc; }
 
         #menuPanel {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #1e1e30;
-            z-index: 200;
-            flex-direction: column;
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: #1e1e30;
+            z-index: 200; flex-direction: column;
         }
         #menuPanel.open { display: flex; }
 
         #menuHeader {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 14px;
-            background: #2a2a3c;
-            border-bottom: 1px solid #333;
-            flex-shrink: 0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; background: #2a2a3c; border-bottom: 1px solid #333; flex-shrink: 0;
         }
-        #menuHeader span {
-            font-weight: 600;
-            color: #ccc;
-        }
+        #menuHeader span { font-weight: 600; color: #ccc; }
         #menuCloseBtn {
-            background: none;
-            border: none;
-            color: #ccc;
-            font-size: 1.5em;
-            cursor: pointer;
-            line-height: 1;
-            padding: 0 4px;
+            background: none; border: none; color: #ccc; font-size: 1.5em;
+            cursor: pointer; line-height: 1; padding: 0 4px;
         }
 
         .menu-tabs {
-            display: flex;
-            border-bottom: 1px solid #333;
-            background: #2a2a3c;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            flex-shrink: 0;
+            display: flex; border-bottom: 1px solid #333; background: #2a2a3c;
+            flex-wrap: nowrap; overflow-x: auto; flex-shrink: 0;
         }
         .menu-tab {
-            flex: 1 0 auto;
-            padding: 12px 8px;
-            font-size: 0.85em;
-            font-weight: 600;
-            color: #aaa;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: 0.2s;
-            white-space: nowrap;
-            text-align: center;
+            flex: 1 0 auto; padding: 12px 8px; font-size: 0.85em; font-weight: 600;
+            color: #aaa; cursor: pointer; border-bottom: 2px solid transparent;
+            transition: 0.2s; white-space: nowrap; text-align: center;
         }
         .menu-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; background: #1e1e30; }
 
         #menuContentWrapper {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 12px;
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px;
         }
 
         .menu-content { display: none; }
         .menu-content.active { display: block; }
 
         textarea, input[type="text"] {
-            width: 100%;
-            border: 1px solid #444;
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 0.9em;
-            background: #2a2a3c;
-            color: #ddd;
-            resize: vertical;
+            width: 100%; border: 1px solid #444; border-radius: 6px; padding: 8px;
+            font-size: 0.9em; background: #2a2a3c; color: #ddd; resize: vertical;
         }
         .menu-btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-size: 0.9em;
-            cursor: pointer;
-            font-weight: 600;
-            width: 100%;
+            background: #3b82f6; color: white; border: none; padding: 10px 16px;
+            border-radius: 6px; font-size: 0.9em; cursor: pointer; font-weight: 600; width: 100%;
         }
         .menu-btn.secondary { background: #555; color: #ccc; }
-        .list-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: 6px;
-        }
+        .list-item { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
         .list-item input {
-            flex: 1;
-            padding: 6px 8px;
-            background: #2a2a3c;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #ddd;
-            font-size: 0.9em;
-            white-space: normal;
-            word-break: break-all;
+            flex: 1; padding: 6px 8px; background: #2a2a3c; border: 1px solid #444;
+            border-radius: 4px; color: #ddd; font-size: 0.9em; white-space: normal; word-break: break-all;
         }
         .list-item button {
-            background: none;
-            border: none;
-            color: #f87171;
-            cursor: pointer;
-            font-size: 1.2em;
-            padding: 2px 4px;
-            flex-shrink: 0;
+            background: none; border: none; color: #f87171; cursor: pointer;
+            font-size: 1.2em; padding: 2px 4px; flex-shrink: 0;
         }
         .small-btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 0.85em;
-            cursor: pointer;
+            background: #3b82f6; color: white; border: none; border-radius: 4px;
+            padding: 6px 12px; font-size: 0.85em; cursor: pointer;
         }
         .count-badge {
-            background: #fbbf24;
-            color: #000;
-            font-size: 0.7em;
-            border-radius: 10px;
-            padding: 1px 6px;
-            margin-left: 4px;
-            font-weight: 600;
+            background: #fbbf24; color: #000; font-size: 0.7em; border-radius: 10px;
+            padding: 1px 6px; margin-left: 4px; font-weight: 600;
         }
 
         #dateTabs {
@@ -178,8 +105,8 @@
         }
         .date-tab {
             flex: 1 1 auto; padding: 6px 4px; font-size: 0.75em; font-weight: 600;
-            color: #888; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s;
-            text-align: center; min-width: 0; flex-shrink: 1;
+            color: #888; cursor: pointer; border-bottom: 3px solid transparent;
+            transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
         #channelTabs {
@@ -189,8 +116,8 @@
         }
         .channel-tab {
             flex: 1 1 auto; padding: 6px 4px; font-size: 0.75em; font-weight: 600;
-            color: #888; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s;
-            text-align: center; min-width: 0; flex-shrink: 1;
+            color: #888; cursor: pointer; border-bottom: 3px solid transparent;
+            transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
         }
         .channel-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
 
@@ -206,15 +133,9 @@
         }
         .program-item:last-child { border-bottom: none; }
         .program-item.uninteresting { background: #000; }
-        .program-item.favorite {
-            border: 2px solid #fbbf24; background: #2a2a00;
-        }
-        .program-item.reserved {
-            border: 2px solid #ef4444; background: #2a0000;
-        }
-        .program-item.favorite.reserved {
-            border: 2px solid #fbbf24; background: #2a2a00;
-        }
+        .program-item.favorite { border: 2px solid #fbbf24; background: #2a2a00; }
+        .program-item.reserved { border: 2px solid #ef4444; background: #2a0000; }
+        .program-item.favorite.reserved { border: 2px solid #fbbf24; background: #2a2a00; }
         .program-time { font-weight: 700; min-width: 50px; color: #8ab4f8; font-size: 0.95em; padding-top: 2px; }
         .program-body { flex: 1; }
         .program-title { font-weight: 600; font-size: 1em; margin-bottom: 2px; line-height: 1.4; }
@@ -242,7 +163,8 @@
         }
         .file-input-label {
             display: inline-block; background: #3b82f6; color: white; padding: 8px 14px;
-            border-radius: 6px; font-size: 0.9em; cursor: pointer; font-weight: 600; text-align: center; width: 100%;
+            border-radius: 6px; font-size: 0.9em; cursor: pointer; font-weight: 600;
+            text-align: center; width: 100%;
         }
         .hidden-file-input { display: none; }
         .empty-paste-area { padding: 20px; }
@@ -524,12 +446,8 @@
     function updateChannelTabLabels() {
         const tabReserved = document.querySelector('.menu-tab[data-tab="tab-reserved"]');
         const tabIgnore = document.querySelector('.menu-tab[data-tab="tab-ignore"]');
-        if (tabReserved) {
-            tabReserved.innerHTML = `予約<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
-        }
-        if (tabIgnore) {
-            tabIgnore.innerHTML = `不要<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
-        }
+        if (tabReserved) tabReserved.innerHTML = `予約<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
+        if (tabIgnore) tabIgnore.innerHTML = `不要<br><span style="font-size:0.7em; color:#aaa;">${selectedChannel}</span>`;
     }
 
     function renderAll() {
@@ -645,7 +563,7 @@
                             ${descDisplay}
                         </div>
                         <div class="swipe-hint left">不要</div>
-                        <div class="swipe-hint right">検索</div>
+                        <div class="swipe-hint right">予約</div>
                     </div>`;
         });
         html += '</div>';
@@ -656,6 +574,7 @@
         });
         attachDoubleTapEvents();
         attachSwipeEvents();
+        attachLongPressEvents();
     }
 
     function renderFavoritesForDate() {
@@ -681,6 +600,7 @@
         });
         html += '</div>';
         contentDiv.innerHTML = html;
+        attachLongPressEvents();
     }
 
     function renderHighlightedForDate() {
@@ -716,6 +636,7 @@
         });
         html += '</div>';
         contentDiv.innerHTML = html;
+        attachLongPressEvents();
     }
 
     function attachDoubleTapEvents() {
@@ -737,10 +658,37 @@
         });
     }
 
+    function attachLongPressEvents() {
+        const items = document.querySelectorAll('.program-item');
+        items.forEach(item => {
+            let pressTimer = null;
+            let startX = 0, startY = 0;
+            const longPressDuration = 500;
+            item.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                pressTimer = setTimeout(() => {
+                    openSearch(item.dataset.title || '');
+                    pressTimer = null;
+                }, longPressDuration);
+            }, {passive: true});
+            item.addEventListener('touchend', (e) => {
+                if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            });
+            item.addEventListener('touchmove', (e) => {
+                if (!pressTimer) return;
+                const dx = Math.abs(e.touches[0].clientX - startX);
+                const dy = Math.abs(e.touches[0].clientY - startY);
+                if (dx > 10 || dy > 10) { clearTimeout(pressTimer); pressTimer = null; }
+            }, {passive: true});
+        });
+    }
+
     function attachSwipeEvents() {
         const items = document.querySelectorAll('.program-item');
         items.forEach(item => {
-            let startX = 0, startY = 0; const threshold = 80;
+            let startX = 0, startY = 0;
+            const threshold = 100; // スワイプ距離を長めに
             const resetSwipe = () => item.classList.remove('swiping-left', 'swiping-right');
             item.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
@@ -763,17 +711,27 @@
                 if (dy > dx) { resetSwipe(); return; }
                 const diff = startX - ex;
                 if (diff > threshold) {
+                    // 左スワイプ：不要登録
                     const base = item.dataset.title, ch = item.dataset.channel;
                     if (!base || !ch) return;
                     if (!uninterestingByChannel[ch]) uninterestingByChannel[ch] = [];
                     const list = uninterestingByChannel[ch];
-                    const idx = list.findIndex(item => (item.value || item) === base);
+                    const idx = list.findIndex(it => (it.value || it) === base);
                     if (idx === -1) list.push({ id: generateWordId(), value: base });
                     else list.splice(idx, 1);
                     saveSettings();
                     renderProgramsForDateAndChannelOnly();
                 } else if (diff < -threshold) {
-                    openSearch(item.dataset.title || '');
+                    // 右スワイプ：予約追加/解除
+                    const base = item.dataset.title, ch = item.dataset.channel;
+                    if (!base || !ch) return;
+                    if (!reservedByChannel[ch]) reservedByChannel[ch] = [];
+                    const list = reservedByChannel[ch];
+                    const idx = list.findIndex(it => (it.value || it) === base);
+                    if (idx === -1) list.push({ id: generateWordId(), value: base });
+                    else list.splice(idx, 1);
+                    saveSettings();
+                    renderProgramsForDateAndChannelOnly();
                 }
                 resetSwipe();
             });
@@ -793,9 +751,10 @@
             if (type === 'uninteresting') count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
             else if (type === 'reserved') count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
             else if (type === 'exclude') count = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(item.value)).length;
+            else if (type === 'highlight') count = programs.filter(p => p.title.includes(item.value) || (p.description && p.description.includes(item.value))).length;
             return `<div class="list-item">
                 <input type="text" value="${escapeHTML(item.value)}" data-id="${item.id}" data-type="${type}" class="edit-word">
-                ${type !== 'highlight' ? `<span class="count-badge">${count}件</span>` : ''}
+                ${count > 0 ? `<span class="count-badge">${count}件</span>` : ''}
                 <button data-action="removeWord" data-id="${item.id}" data-type="${type}">✕</button>
             </div>`;
         }).join('');
@@ -884,6 +843,12 @@
         const val = input.value.trim();
         if (val && !highlightWords.some(item => item.value === val)) { highlightWords.push({ id: generateWordId(), value: val }); saveSettings(); renderWordList('highlightList', highlightWords, 'highlight'); renderProgramsForDateAndChannelOnly(); input.value = ''; }
     });
+
+    // Enterキーでの追加（既存のinputにkeypressイベントを再設定）
+    document.getElementById('newUninteresting').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addUninterestingBtn').click(); });
+    document.getElementById('newReserved').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addReservedBtn').click(); });
+    document.getElementById('newExclude').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addExcludeBtn').click(); });
+    document.getElementById('newHighlight').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addHighlightBtn').click(); });
 
     function migrateWordLists() {
         for (const ch of Object.keys(uninterestingByChannel)) { const arr = uninterestingByChannel[ch]; if (arr.length > 0 && typeof arr[0] === 'string') uninterestingByChannel[ch] = wordsToObjects(arr); }
@@ -984,7 +949,7 @@
         menuPanel.classList.add('open');
         document.body.classList.add('menu-open');
         updateChannelTabLabels();
-        renderUninterestingList(); renderReservedList(); renderExcludeList();
+        renderUninterestingList(); renderReservedList(); renderExcludeList(); renderHighlightList();
     });
     menuCloseBtn.addEventListener('click', () => {
         menuPanel.classList.remove('open');
@@ -999,6 +964,7 @@
             if (tab.dataset.tab === 'tab-ignore') renderUninterestingList();
             if (tab.dataset.tab === 'tab-reserved') renderReservedList();
             if (tab.dataset.tab === 'tab-exclude') renderExcludeList();
+            if (tab.dataset.tab === 'tab-highlight') renderHighlightList();
         });
     });
 
