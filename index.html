@@ -405,9 +405,14 @@
     function openSearch(query) { openExternal(`https://www.google.com/search?q=${encodeURIComponent(query)}`); }
 
     function getBaseTitle(fullTitle) {
-        const idx = fullTitle.search(/[🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻【]/);
-        return idx === -1 ? fullTitle : fullTitle.substring(0, idx).trim();
+        const parts = fullTitle.split(/[🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻【]/);
+        for (const part of parts) {
+            const trimmed = part.trim();
+            if (trimmed) return trimmed;
+        }
+        return fullTitle;
     }
+
     function applyHighlight(text) {
         return highlightWords.reduce((str, word) => {
             const w = (word.value || word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -517,20 +522,28 @@
 
     function renderProgramsForDateAndChannel(todayPrograms) {
         let filtered = todayPrograms.filter(p => p.channel === selectedChannel).sort((a,b) => a.rawStart - b.rawStart);
+        const uninterestingList = (uninterestingByChannel[selectedChannel] || []).map(w => w.value || w);
+        const reservedList = (reservedByChannel[selectedChannel] || []).map(w => w.value || w);
+
         if (!showUninteresting) {
-            const uninterestingList = (uninterestingByChannel[selectedChannel] || []).map(w => w.value || w);
             filtered = filtered.filter(p => {
                 const base = getBaseTitle(p.title);
                 const isUser = uninterestingList.some(w => base.startsWith(w));
                 const dur = (p.rawEnd - p.rawStart)/60000;
                 const globalMatch = globalExcludeWords.some(w => p.title.includes(w.value || w));
-                return !(isUser || globalMatch || (dur <= 5 && dur >= 0));
+                const isUninteresting = isUser || globalMatch || (dur <= 5 && dur >= 0);
+
+                if (isUninteresting) {
+                    const isReserved = reservedList.some(w => base.startsWith(w));
+                    const hasHighlight = descriptionContainsHighlight(p.title) || descriptionContainsHighlight(p.description);
+                    return isReserved || hasHighlight;
+                }
+                return true;
             });
         }
+
         if (filtered.length === 0) { contentDiv.innerHTML = '<div class="empty-message">表示する番組がありません</div>'; return; }
 
-        const uninterestingList = (uninterestingByChannel[selectedChannel] || []).map(w => w.value || w);
-        const reservedList = (reservedByChannel[selectedChannel] || []).map(w => w.value || w);
         let html = '<div class="program-group">';
         filtered.forEach(p => {
             const startStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
@@ -688,7 +701,7 @@
         const items = document.querySelectorAll('.program-item');
         items.forEach(item => {
             let startX = 0, startY = 0;
-            const threshold = 100; // スワイプ距離を長めに
+            const threshold = 100;
             const resetSwipe = () => item.classList.remove('swiping-left', 'swiping-right');
             item.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
@@ -711,7 +724,6 @@
                 if (dy > dx) { resetSwipe(); return; }
                 const diff = startX - ex;
                 if (diff > threshold) {
-                    // 左スワイプ：不要登録
                     const base = item.dataset.title, ch = item.dataset.channel;
                     if (!base || !ch) return;
                     if (!uninterestingByChannel[ch]) uninterestingByChannel[ch] = [];
@@ -722,7 +734,6 @@
                     saveSettings();
                     renderProgramsForDateAndChannelOnly();
                 } else if (diff < -threshold) {
-                    // 右スワイプ：予約追加/解除
                     const base = item.dataset.title, ch = item.dataset.channel;
                     if (!base || !ch) return;
                     if (!reservedByChannel[ch]) reservedByChannel[ch] = [];
@@ -805,15 +816,23 @@
         }
     });
 
+    let blurTimer = null;
     document.addEventListener('blur', (e) => {
         if (e.target.classList.contains('edit-word')) {
-            saveSettings();
-            renderProgramsForDateAndChannelOnly();
-            const type = e.target.dataset.type;
-            if (type === 'uninteresting') renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting');
-            else if (type === 'reserved') renderWordList('reservedList', reservedByChannel[selectedChannel] || [], 'reserved');
-            else if (type === 'exclude') renderWordList('excludeList', globalExcludeWords, 'exclude');
-            else if (type === 'highlight') renderWordList('highlightList', highlightWords, 'highlight');
+            if (blurTimer) clearTimeout(blurTimer);
+            blurTimer = setTimeout(() => {
+                if (document.activeElement && document.activeElement.classList.contains('edit-word')) {
+                    return;
+                }
+                saveSettings();
+                renderProgramsForDateAndChannelOnly();
+                const type = e.target.dataset.type;
+                if (type === 'uninteresting') renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting');
+                else if (type === 'reserved') renderWordList('reservedList', reservedByChannel[selectedChannel] || [], 'reserved');
+                else if (type === 'exclude') renderWordList('excludeList', globalExcludeWords, 'exclude');
+                else if (type === 'highlight') renderWordList('highlightList', highlightWords, 'highlight');
+                blurTimer = null;
+            }, 100);
         }
     }, true);
 
@@ -844,7 +863,6 @@
         if (val && !highlightWords.some(item => item.value === val)) { highlightWords.push({ id: generateWordId(), value: val }); saveSettings(); renderWordList('highlightList', highlightWords, 'highlight'); renderProgramsForDateAndChannelOnly(); input.value = ''; }
     });
 
-    // Enterキーでの追加（既存のinputにkeypressイベントを再設定）
     document.getElementById('newUninteresting').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addUninterestingBtn').click(); });
     document.getElementById('newReserved').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addReservedBtn').click(); });
     document.getElementById('newExclude').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('addExcludeBtn').click(); });
