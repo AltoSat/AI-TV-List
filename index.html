@@ -228,14 +228,14 @@
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v7';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v10';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
     }
 
-    const STORAGE_KEY = 'tvProgramsV7';
-    const SETTINGS_KEY = 'tvSettingsV7';
+    const STORAGE_KEY = 'tvProgramsV10';
+    const SETTINGS_KEY = 'tvSettingsV10';
     const CHANNEL_ORDER = ["HBC", "NHK-E", "NHK-G", "STV", "HTB", "TVh", "UHB"];
 
     const CHANNEL_NAME_MIGRATION = {
@@ -271,6 +271,12 @@
     const exportBtn = document.getElementById('exportBtn');
     const importFile = document.getElementById('importFile');
     const clearBtn = document.getElementById('clearBtn');
+
+    // --- ワード管理用のユーティリティ ---
+    let wordIdCounter = Date.now();
+    function generateWordId() { return 'word_' + (wordIdCounter++); }
+    function wordsToObjects(arr) { return arr.map(value => ({ id: generateWordId(), value })); }
+    function objectsToWords(objArr) { return objArr.map(o => o.value); }
 
     function migrateChannelNames(obj) {
         if (typeof obj !== 'object' || obj === null) return obj;
@@ -309,7 +315,7 @@
     }
 
     function migrateOldData() {
-        const oldProgramKeys = ['tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4','tvProgramsV5','tvProgramsV6'];
+        const oldProgramKeys = ['tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4','tvProgramsV5','tvProgramsV6','tvProgramsV7','tvProgramsV8','tvProgramsV9'];
         for (const key of oldProgramKeys) {
             if (key === STORAGE_KEY) continue;
             const raw = localStorage.getItem(key);
@@ -325,7 +331,7 @@
                 } catch(e) {}
             }
         }
-        const oldSettingsKeys = ['tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4','tvSettingsV5','tvSettingsV6'];
+        const oldSettingsKeys = ['tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4','tvSettingsV5','tvSettingsV6','tvSettingsV7','tvSettingsV8','tvSettingsV9'];
         for (const key of oldSettingsKeys) {
             if (key === SETTINGS_KEY) continue;
             const raw = localStorage.getItem(key);
@@ -408,11 +414,14 @@
     }
     function applyHighlight(text) {
         return highlightWords.reduce((str, word) => {
-            const regex = new RegExp(`(${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            const w = (word.value || word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${w})`, 'gi');
             return str.replace(regex, '<mark>$1</mark>');
         }, text);
     }
-    function descriptionContainsHighlight(desc) { return highlightWords.length > 0 && highlightWords.some(w => desc.includes(w)); }
+    function descriptionContainsHighlight(desc) {
+        return highlightWords.length > 0 && highlightWords.some(w => desc.includes(w.value || w));
+    }
 
     function parseProgramsFromHTML(htmlString, targetDate) {
         const parser = new DOMParser();
@@ -441,39 +450,43 @@
     }
 
     function renderAll() {
-        if (!isWithinRange(selectedDate)) { selectedDate = new Date(); selectedDate.setHours(0,0,0,0); }
-        renderDateTabs();
-        if (showFavorites) {
-            renderFavoritesForDate();
-            return;
+        try {
+            if (!isWithinRange(selectedDate)) { selectedDate = new Date(); selectedDate.setHours(0,0,0,0); }
+            renderDateTabs();
+            if (showFavorites) {
+                renderFavoritesForDate();
+                return;
+            }
+            if (showHighlighted) {
+                renderHighlightedForDate();
+                return;
+            }
+            const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
+            if (todayPrograms.length === 0) {
+                channelTabsDiv.innerHTML = '';
+                contentDiv.innerHTML = `
+                    <div class="empty-paste-area">
+                        <p style="margin-bottom:12px;">この日付の番組データがありません。</p>
+                        <textarea id="emptyPasteArea" placeholder="ここに番組表を貼り付け" style="width:100%; height:100px; background:#2a2a3c; color:#ddd; border:1px solid #444; border-radius:6px; padding:8px;"></textarea>
+                        <button id="emptyGguideBtn" class="menu-btn" style="margin-top:8px;">🔗 Gガイドで番組表を開く</button>
+                    </div>`;
+                openGguideForDate(selectedDate);
+                document.getElementById('emptyGguideBtn')?.addEventListener('click', () => openGguideForDate(selectedDate));
+                document.getElementById('emptyPasteArea')?.addEventListener('paste', (e) => {
+                    e.preventDefault(); const cb = e.clipboardData || window.clipboardData;
+                    if (!cb) return; const htmlData = cb.getData('text/html'); const plainText = cb.getData('text/plain');
+                    if (e.target) e.target.value = plainText || '';
+                    if (!htmlData) { alert('HTML形式のデータが取得できませんでした。'); return; }
+                    handlePaste(htmlData, selectedDate);
+                });
+            } else {
+                renderChannelTabs(todayPrograms);
+                renderProgramsForDateAndChannel(todayPrograms);
+            }
+            updateHeaderButtons();
+        } catch (e) {
+            console.error('renderAll error:', e);
         }
-        if (showHighlighted) {
-            renderHighlightedForDate();
-            return;
-        }
-        const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
-        if (todayPrograms.length === 0) {
-            channelTabsDiv.innerHTML = '';
-            contentDiv.innerHTML = `
-                <div class="empty-paste-area">
-                    <p style="margin-bottom:12px;">この日付の番組データがありません。</p>
-                    <textarea id="emptyPasteArea" placeholder="ここに番組表を貼り付け" style="width:100%; height:100px; background:#2a2a3c; color:#ddd; border:1px solid #444; border-radius:6px; padding:8px;"></textarea>
-                    <button id="emptyGguideBtn" class="menu-btn" style="margin-top:8px;">🔗 Gガイドで番組表を開く</button>
-                </div>`;
-            openGguideForDate(selectedDate);
-            document.getElementById('emptyGguideBtn')?.addEventListener('click', () => openGguideForDate(selectedDate));
-            document.getElementById('emptyPasteArea')?.addEventListener('paste', (e) => {
-                e.preventDefault(); const cb = e.clipboardData || window.clipboardData;
-                if (!cb) return; const htmlData = cb.getData('text/html'); const plainText = cb.getData('text/plain');
-                if (e.target) e.target.value = plainText || '';
-                if (!htmlData) { alert('HTML形式のデータが取得できませんでした。'); return; }
-                handlePaste(htmlData, selectedDate);
-            });
-        } else {
-            renderChannelTabs(todayPrograms);
-            renderProgramsForDateAndChannel(todayPrograms);
-        }
-        updateHeaderButtons();
     }
 
     function renderProgramsForDateAndChannelOnly() {
@@ -518,26 +531,26 @@
     function renderProgramsForDateAndChannel(todayPrograms) {
         let filtered = todayPrograms.filter(p => p.channel === selectedChannel).sort((a,b) => a.rawStart - b.rawStart);
         if (!showUninteresting) {
-            const uninterestingList = uninterestingByChannel[selectedChannel] || [];
+            const uninterestingList = (uninterestingByChannel[selectedChannel] || []).map(w => w.value || w);
             filtered = filtered.filter(p => {
                 const base = getBaseTitle(p.title);
                 const isUser = uninterestingList.some(w => base.startsWith(w));
                 const dur = (p.rawEnd - p.rawStart)/60000;
-                const globalMatch = globalExcludeWords.some(w => p.title.includes(w));
+                const globalMatch = globalExcludeWords.some(w => p.title.includes(w.value || w));
                 return !(isUser || globalMatch || (dur <= 5 && dur >= 0));
             });
         }
         if (filtered.length === 0) { contentDiv.innerHTML = '<div class="empty-message">表示する番組がありません</div>'; return; }
 
-        const uninterestingList = uninterestingByChannel[selectedChannel] || [];
-        const reservedList = reservedByChannel[selectedChannel] || [];
+        const uninterestingList = (uninterestingByChannel[selectedChannel] || []).map(w => w.value || w);
+        const reservedList = (reservedByChannel[selectedChannel] || []).map(w => w.value || w);
         let html = '<div class="program-group">';
         filtered.forEach(p => {
             const startStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
             const baseTitle = getBaseTitle(p.title);
             const isUserUninteresting = uninterestingList.some(w => baseTitle.startsWith(w));
             const dur = (p.rawEnd - p.rawStart)/60000;
-            const globalMatch = globalExcludeWords.some(w => p.title.includes(w));
+            const globalMatch = globalExcludeWords.some(w => p.title.includes(w.value || w));
             const isUninteresting = isUserUninteresting || globalMatch || (dur <= 5 && dur >= 0);
             const isReserved = reservedList.some(w => baseTitle.startsWith(w));
             const isFav = favorites.includes(getProgramId(p));
@@ -584,10 +597,11 @@
         if (allFavs.length === 0) {
             contentDiv.innerHTML = '<div class="empty-message">この日のお気に入りはありません</div>'; return;
         }
+        const reservedList = (reservedByChannel[selectedChannel] || []).map(w => w.value || w);
         let html = '<div class="program-group">';
         allFavs.forEach(p => {
             const timeStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
-            const isReserved = (reservedByChannel[p.channel] || []).some(w => getBaseTitle(p.title).startsWith(w));
+            const isReserved = reservedList.some(w => getBaseTitle(p.title).startsWith(w));
             let itemClass = 'program-item favorite';
             if (isReserved) itemClass += ' reserved';
             let titlePrefix = '⭐ ';
@@ -609,19 +623,20 @@
         channelTabsDiv.innerHTML = '';
         const allFiltered = programs.filter(p => {
             if (p.displayDate.getTime() !== selectedDate.getTime()) return false;
-            const titleHas = highlightWords.some(w => p.title.includes(w));
-            const descHas = p.description && highlightWords.some(w => p.description.includes(w));
+            const titleHas = highlightWords.some(w => p.title.includes(w.value || w));
+            const descHas = p.description && highlightWords.some(w => p.description.includes(w.value || w));
             return titleHas || descHas;
         }).sort((a,b) => a.rawStart - b.rawStart);
 
         if (allFiltered.length === 0) {
             contentDiv.innerHTML = '<div class="empty-message">該当する番組はありません</div>'; return;
         }
+        const reservedList = (reservedByChannel[selectedChannel] || []).map(w => w.value || w);
         let html = '<div class="program-group">';
         allFiltered.forEach(p => {
             const timeStr = `${String(p.rawStart.getHours()).padStart(2,'0')}:${String(p.rawStart.getMinutes()).padStart(2,'0')}`;
             const isFav = favorites.includes(getProgramId(p));
-            const isReserved = (reservedByChannel[p.channel] || []).some(w => getBaseTitle(p.title).startsWith(w));
+            const isReserved = reservedList.some(w => getBaseTitle(p.title).startsWith(w));
             let itemClass = 'program-item';
             if (isFav) itemClass += ' favorite';
             else if (isReserved) itemClass += ' reserved';
@@ -694,8 +709,9 @@
                     if (!base || !ch) return;
                     if (!uninterestingByChannel[ch]) uninterestingByChannel[ch] = [];
                     const list = uninterestingByChannel[ch];
-                    const idx = list.indexOf(base);
-                    if (idx === -1) list.push(base); else list.splice(idx, 1);
+                    const idx = list.findIndex(item => (item.value || item) === base);
+                    if (idx === -1) list.push({ id: generateWordId(), value: base });
+                    else list.splice(idx, 1);
                     saveSettings();
                     renderProgramsForDateAndChannelOnly();
                 } else if (diff < -threshold) {
@@ -708,124 +724,171 @@
 
     function escapeHTML(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
-    // 五十音順ソート
     const collator = new Intl.Collator('ja');
 
-    function renderUninterestingList() {
-        const list = [...(uninterestingByChannel[selectedChannel] || [])].sort(collator.compare);
-        const div = document.getElementById('uninterestingList');
-        div.innerHTML = list.map((word, idx) => {
-            const count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(word)).length;
-            return `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="uninteresting" class="edit-word"><span class="count-badge">${count}件</span><button data-action="removeUninteresting" data-index="${idx}">✕</button></div>`;
+    function renderWordList(containerId, words, type) {
+        const sorted = words.map(w => ({ ...w })).sort((a, b) => collator.compare(a.value, b.value));
+        const div = document.getElementById(containerId);
+        if (!div) return;
+        div.innerHTML = sorted.map(item => {
+            let count = 0;
+            if (type === 'uninteresting') {
+                count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
+            } else if (type === 'reserved') {
+                count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
+            } else if (type === 'exclude') {
+                count = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(item.value)).length;
+            }
+            return `<div class="list-item">
+                <input type="text" value="${escapeHTML(item.value)}" data-id="${item.id}" data-type="${type}" class="edit-word">
+                ${type !== 'highlight' ? `<span class="count-badge">${count}件</span>` : ''}
+                <button data-action="removeWord" data-id="${item.id}" data-type="${type}">✕</button>
+            </div>`;
         }).join('');
     }
-    function renderReservedList() {
-        const list = [...(reservedByChannel[selectedChannel] || [])].sort(collator.compare);
-        const div = document.getElementById('reservedList');
-        div.innerHTML = list.map((word, idx) => {
-            const count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(word)).length;
-            return `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="reserved" class="edit-word"><span class="count-badge">${count}件</span><button data-action="removeReserved" data-index="${idx}">✕</button></div>`;
-        }).join('');
+
+    function getWordListByType(type) {
+        if (type === 'uninteresting') return uninterestingByChannel[selectedChannel] || [];
+        if (type === 'reserved') return reservedByChannel[selectedChannel] || [];
+        if (type === 'exclude') return globalExcludeWords;
+        if (type === 'highlight') return highlightWords;
+        return [];
     }
-    function renderExcludeList() {
-        const list = [...globalExcludeWords].sort(collator.compare);
-        const div = document.getElementById('excludeList');
-        div.innerHTML = list.map((word, idx) => {
-            const count = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(word)).length;
-            return `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="exclude" class="edit-word"><span class="count-badge">${count}件</span><button data-action="removeExclude" data-index="${idx}">✕</button></div>`;
-        }).join('');
+
+    function setWordListByType(type, list) {
+        if (type === 'uninteresting') uninterestingByChannel[selectedChannel] = list;
+        else if (type === 'reserved') reservedByChannel[selectedChannel] = list;
+        else if (type === 'exclude') globalExcludeWords = list;
+        else if (type === 'highlight') highlightWords = list;
     }
-    function renderHighlightList() {
-        const list = [...highlightWords].sort(collator.compare);
-        const div = document.getElementById('highlightList');
-        div.innerHTML = list.map((word, idx) => `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="highlight" class="edit-word"><button data-action="removeHighlight" data-index="${idx}">✕</button></div>`).join('');
+
+    menuPanel.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        if (action === 'removeWord') {
+            e.stopPropagation();
+            const id = e.target.dataset.id;
+            const type = e.target.dataset.type;
+            let list = getWordListByType(type);
+            list = list.filter(item => item.id !== id);
+            setWordListByType(type, list);
+            saveSettings();
+            if (type === 'uninteresting') renderWordList('uninterestingList', list, 'uninteresting');
+            else if (type === 'reserved') renderWordList('reservedList', list, 'reserved');
+            else if (type === 'exclude') renderWordList('excludeList', list, 'exclude');
+            else if (type === 'highlight') renderWordList('highlightList', list, 'highlight');
+            renderProgramsForDateAndChannelOnly();
+        }
+    });
+
+    document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('edit-word')) {
+            const id = e.target.dataset.id;
+            const type = e.target.dataset.type;
+            const newVal = e.target.value.trim();
+            if (newVal === '') return;
+            let list = getWordListByType(type);
+            const item = list.find(it => it.id === id);
+            if (item) item.value = newVal;
+        }
+    });
+
+    document.addEventListener('blur', (e) => {
+        if (e.target.classList.contains('edit-word')) {
+            saveSettings();
+            renderProgramsForDateAndChannelOnly();
+            const type = e.target.dataset.type;
+            if (type === 'uninteresting') renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting');
+            else if (type === 'reserved') renderWordList('reservedList', reservedByChannel[selectedChannel] || [], 'reserved');
+            else if (type === 'exclude') renderWordList('excludeList', globalExcludeWords, 'exclude');
+            else if (type === 'highlight') renderWordList('highlightList', highlightWords, 'highlight');
+        }
+    }, true);
+
+    document.getElementById('addUninterestingBtn').addEventListener('click', () => {
+        const input = document.getElementById('newUninteresting');
+        const val = input.value.trim();
+        if (val) {
+            let list = uninterestingByChannel[selectedChannel] || [];
+            if (!list.some(item => item.value === val)) {
+                list.push({ id: generateWordId(), value: val });
+                uninterestingByChannel[selectedChannel] = list;
+                saveSettings();
+                renderWordList('uninterestingList', list, 'uninteresting');
+                renderProgramsForDateAndChannelOnly();
+                input.value = '';
+            }
+        }
+    });
+    document.getElementById('addReservedBtn').addEventListener('click', () => {
+        const input = document.getElementById('newReserved');
+        const val = input.value.trim();
+        if (val) {
+            let list = reservedByChannel[selectedChannel] || [];
+            if (!list.some(item => item.value === val)) {
+                list.push({ id: generateWordId(), value: val });
+                reservedByChannel[selectedChannel] = list;
+                saveSettings();
+                renderWordList('reservedList', list, 'reserved');
+                renderProgramsForDateAndChannelOnly();
+                input.value = '';
+            }
+        }
+    });
+    document.getElementById('addExcludeBtn').addEventListener('click', () => {
+        const input = document.getElementById('newExclude');
+        const val = input.value.trim();
+        if (val && !globalExcludeWords.some(item => item.value === val)) {
+            globalExcludeWords.push({ id: generateWordId(), value: val });
+            saveSettings();
+            renderWordList('excludeList', globalExcludeWords, 'exclude');
+            renderProgramsForDateAndChannelOnly();
+            input.value = '';
+        }
+    });
+    document.getElementById('addHighlightBtn').addEventListener('click', () => {
+        const input = document.getElementById('newHighlight');
+        const val = input.value.trim();
+        if (val && !highlightWords.some(item => item.value === val)) {
+            highlightWords.push({ id: generateWordId(), value: val });
+            saveSettings();
+            renderWordList('highlightList', highlightWords, 'highlight');
+            renderProgramsForDateAndChannelOnly();
+            input.value = '';
+        }
+    });
+
+    function migrateWordLists() {
+        for (const ch of Object.keys(uninterestingByChannel)) {
+            const arr = uninterestingByChannel[ch];
+            if (arr.length > 0 && typeof arr[0] === 'string') {
+                uninterestingByChannel[ch] = wordsToObjects(arr);
+            }
+        }
+        for (const ch of Object.keys(reservedByChannel)) {
+            const arr = reservedByChannel[ch];
+            if (arr.length > 0 && typeof arr[0] === 'string') {
+                reservedByChannel[ch] = wordsToObjects(arr);
+            }
+        }
+        if (globalExcludeWords.length > 0 && typeof globalExcludeWords[0] === 'string') {
+            globalExcludeWords = wordsToObjects(globalExcludeWords);
+        }
+        if (highlightWords.length > 0 && typeof highlightWords[0] === 'string') {
+            highlightWords = wordsToObjects(highlightWords);
+        }
+        // 変換後、即座に保存はしない（初期化後にまとめて行う）
     }
+
+    function renderUninterestingList() { renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting'); }
+    function renderReservedList() { renderWordList('reservedList', reservedByChannel[selectedChannel] || [], 'reserved'); }
+    function renderExcludeList() { renderWordList('excludeList', globalExcludeWords, 'exclude'); }
+    function renderHighlightList() { renderWordList('highlightList', highlightWords, 'highlight'); }
 
     function updateHeaderButtons() {
         toggleUninterestingBtn.className = 'header-btn ' + (showUninteresting ? 'active' : 'inactive');
         favoritesViewBtn.className = 'header-btn ' + (showFavorites ? 'active' : 'inactive');
         highlightedViewBtn.className = 'header-btn ' + (showHighlighted ? 'active' : 'inactive');
     }
-
-    // メニュー内のクリックイベント（削除・追加など）を処理し、伝播を止める
-    menuPanel.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
-        if (!action) return;
-        e.stopPropagation(); // ドキュメント全体への伝播を防止
-        if (action === 'removeUninteresting') {
-            const list = uninterestingByChannel[selectedChannel] || [];
-            list.splice(parseInt(e.target.dataset.index), 1);
-            saveSettings();
-            renderUninterestingList();
-            renderProgramsForDateAndChannelOnly();
-        } else if (action === 'removeReserved') {
-            const list = reservedByChannel[selectedChannel] || [];
-            list.splice(parseInt(e.target.dataset.index), 1);
-            saveSettings();
-            renderReservedList();
-            renderProgramsForDateAndChannelOnly();
-        } else if (action === 'removeExclude') {
-            globalExcludeWords.splice(parseInt(e.target.dataset.index), 1);
-            saveSettings();
-            renderExcludeList();
-            renderProgramsForDateAndChannelOnly();
-        } else if (action === 'removeHighlight') {
-            highlightWords.splice(parseInt(e.target.dataset.index), 1);
-            saveSettings();
-            renderHighlightList();
-            renderProgramsForDateAndChannelOnly();
-        }
-    });
-
-    // 編集入力（input イベント）
-    document.addEventListener('input', (e) => {
-        if (e.target.classList.contains('edit-word')) {
-            const idx = parseInt(e.target.dataset.index), type = e.target.dataset.type;
-            const newVal = e.target.value.trim();
-            if (newVal === '') return;
-            if (type === 'uninteresting') {
-                const list = uninterestingByChannel[selectedChannel] || [];
-                if (idx >= 0 && idx < list.length) list[idx] = newVal;
-            } else if (type === 'reserved') {
-                const list = reservedByChannel[selectedChannel] || [];
-                if (idx >= 0 && idx < list.length) list[idx] = newVal;
-            } else if (type === 'exclude') {
-                if (idx >= 0 && idx < globalExcludeWords.length) globalExcludeWords[idx] = newVal;
-            } else if (type === 'highlight') {
-                if (idx >= 0 && idx < highlightWords.length) highlightWords[idx] = newVal;
-            }
-        }
-    });
-
-    // フォーカスが外れたら保存＋番組一覧再描画
-    document.addEventListener('blur', (e) => {
-        if (e.target.classList.contains('edit-word')) {
-            saveSettings();
-            renderProgramsForDateAndChannelOnly();
-        }
-    }, true);
-
-    document.getElementById('newUninteresting').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addUninterestingBtn').click(); });
-    document.getElementById('newReserved').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addReservedBtn').click(); });
-    document.getElementById('newExclude').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addExcludeBtn').click(); });
-    document.getElementById('newHighlight').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addHighlightBtn').click(); });
-
-    document.getElementById('addUninterestingBtn').addEventListener('click', () => {
-        const val = document.getElementById('newUninteresting').value.trim();
-        if (val) { const list = uninterestingByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); uninterestingByChannel[selectedChannel] = list; saveSettings(); renderUninterestingList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newUninteresting').value = ''; } }
-    });
-    document.getElementById('addReservedBtn').addEventListener('click', () => {
-        const val = document.getElementById('newReserved').value.trim();
-        if (val) { const list = reservedByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); reservedByChannel[selectedChannel] = list; saveSettings(); renderReservedList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newReserved').value = ''; } }
-    });
-    document.getElementById('addExcludeBtn').addEventListener('click', () => {
-        const val = document.getElementById('newExclude').value.trim();
-        if (val && !globalExcludeWords.includes(val)) { globalExcludeWords.push(val); saveSettings(); renderExcludeList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newExclude').value = ''; }
-    });
-    document.getElementById('addHighlightBtn').addEventListener('click', () => {
-        const val = document.getElementById('newHighlight').value.trim();
-        if (val && !highlightWords.includes(val)) { highlightWords.push(val); saveSettings(); renderHighlightList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newHighlight').value = ''; }
-    });
 
     function handlePaste(htmlData, targetDate) {
         try {
@@ -866,8 +929,18 @@
     });
 
     exportBtn.addEventListener('click', () => {
-        const data = { programs, settings: { uninterestingByChannel, reservedByChannel, globalExcludeWords, highlightWords, favorites, showUninteresting } };
-        const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+        const exportData = {
+            programs,
+            settings: {
+                uninterestingByChannel: Object.fromEntries(Object.entries(uninterestingByChannel).map(([k, v]) => [k, objectsToWords(v)])),
+                reservedByChannel: Object.fromEntries(Object.entries(reservedByChannel).map(([k, v]) => [k, objectsToWords(v)])),
+                globalExcludeWords: objectsToWords(globalExcludeWords),
+                highlightWords: objectsToWords(highlightWords),
+                favorites,
+                showUninteresting
+            }
+        };
+        const blob = new Blob([JSON.stringify(exportData)], {type: 'application/json'});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tv-ai-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
     });
     importFile.addEventListener('change', (e) => {
@@ -878,10 +951,16 @@
                 const data = JSON.parse(ev.target.result);
                 if (data.programs && data.settings) {
                     programs = data.programs.map(p => ({...p, channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel}));
-                    uninterestingByChannel = migrateChannelNames(data.settings.uninterestingByChannel || {});
-                    reservedByChannel = migrateChannelNames(data.settings.reservedByChannel || {});
-                    globalExcludeWords = data.settings.globalExcludeWords || [];
-                    highlightWords = data.settings.highlightWords || [];
+                    uninterestingByChannel = {};
+                    for (const [k, v] of Object.entries(data.settings.uninterestingByChannel || {})) {
+                        uninterestingByChannel[k] = wordsToObjects(v);
+                    }
+                    reservedByChannel = {};
+                    for (const [k, v] of Object.entries(data.settings.reservedByChannel || {})) {
+                        reservedByChannel[k] = wordsToObjects(v);
+                    }
+                    globalExcludeWords = wordsToObjects(data.settings.globalExcludeWords || []);
+                    highlightWords = wordsToObjects(data.settings.highlightWords || []);
                     favorites = data.settings.favorites || [];
                     showUninteresting = data.settings.showUninteresting !== false;
                     savePrograms(); saveSettings(); renderAll(); menuPanel.classList.remove('open'); alert('インポート完了');
@@ -907,7 +986,6 @@
         }
     });
     document.addEventListener('click', (e) => {
-        // メニューパネル外のクリックで閉じる（パネル内のクリックは stopPropagation されている）
         if (!menuPanel.contains(e.target) && e.target !== menuBtn) menuPanel.classList.remove('open');
     });
     document.querySelectorAll('.menu-tab').forEach(tab => {
@@ -922,9 +1000,11 @@
         });
     });
 
+    // --- 初期化 ---
     window.addEventListener('load', () => {
         migrateOldData();
         loadSettings();
+        migrateWordLists(); // データ構造をオブジェクトに変換（保存はまだしない）
         programs = loadPrograms();
         programs = programs.map(p => ({...p, channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel}));
         if (programs.length > 0) {
@@ -932,8 +1012,9 @@
             selectedDate = programs.find(p => p.displayDate.getTime() === today.getTime()) ? today : programs[0].displayDate;
         }
         selectedChannel = CHANNEL_ORDER[0];
+        saveSettings(); // ここで変換後の設定を保存
         updateHeaderButtons();
-        renderAll();
+        renderAll(); // 正常に描画
     });
 </script>
 </body>
