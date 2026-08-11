@@ -73,26 +73,27 @@
         .small-btn { background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75em; cursor: pointer; }
         .count-badge { background: #fbbf24; color: #000; font-size: 0.7em; border-radius: 10px; padding: 1px 6px; margin-left: 4px; font-weight: 600; }
 
+        /* 日付・チャンネルタブ（スクロール無しで全表示） */
         #dateTabs {
             position: sticky; top: 30px; background: #1a1a2e; border-bottom: 1px solid #333;
-            display: flex; overflow-x: auto; white-space: nowrap; z-index: 90; align-items: center;
-            scrollbar-width: none; -ms-overflow-style: none; min-height: 44px;
+            display: flex; flex-wrap: nowrap; z-index: 90; align-items: center;
+            overflow: hidden; min-height: 44px;
         }
-        #dateTabs::-webkit-scrollbar { display: none; }
         .date-tab {
-            flex: 0 0 auto; padding: 10px 12px; font-size: 0.85em; font-weight: 600;
+            flex: 1 1 auto; padding: 6px 4px; font-size: 0.75em; font-weight: 600;
             color: #888; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s;
+            text-align: center; min-width: 0; flex-shrink: 1;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
         #channelTabs {
             position: sticky; top: 74px; background: #1a1a2e; border-bottom: 1px solid #333;
-            display: flex; overflow-x: auto; white-space: nowrap; z-index: 89; align-items: center;
-            scrollbar-width: none; -ms-overflow-style: none; min-height: 44px;
+            display: flex; flex-wrap: nowrap; z-index: 89; align-items: center;
+            overflow: hidden; min-height: 44px;
         }
-        #channelTabs::-webkit-scrollbar { display: none; }
         .channel-tab {
-            flex: 0 0 auto; padding: 10px 12px; font-size: 0.85em; font-weight: 600;
+            flex: 1 1 auto; padding: 6px 4px; font-size: 0.75em; font-weight: 600;
             color: #888; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s;
+            text-align: center; min-width: 0; flex-shrink: 1;
         }
         .channel-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
 
@@ -168,6 +169,7 @@
         <div class="menu-tab" data-tab="tab-paste">📋 貼り付け</div>
         <div class="menu-tab active" data-tab="tab-ignore">▲ 興味なし</div>
         <div class="menu-tab" data-tab="tab-reserved">📌 予約済</div>
+        <div class="menu-tab" data-tab="tab-exclude">🚫 除外ワード</div>
         <div class="menu-tab" data-tab="tab-highlight">🔍 強調</div>
         <div class="menu-tab" data-tab="tab-backup">💾 バックアップ</div>
     </div>
@@ -195,6 +197,15 @@
         </div>
     </div>
 
+    <!-- 全番組対象の除外ワード -->
+    <div class="menu-content" id="tab-exclude">
+        <div id="excludeList"></div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+            <input type="text" id="newExclude" placeholder="除外するキーワード（部分一致）">
+            <button id="addExcludeBtn" class="small-btn">追加</button>
+        </div>
+    </div>
+
     <div class="menu-content" id="tab-highlight">
         <div id="highlightList"></div>
         <div style="display:flex; gap:6px; margin-top:8px;">
@@ -218,14 +229,14 @@
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v5';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v6';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
     }
 
-    const STORAGE_KEY = 'tvProgramsV5';
-    const SETTINGS_KEY = 'tvSettingsV5';
+    const STORAGE_KEY = 'tvProgramsV6';
+    const SETTINGS_KEY = 'tvSettingsV6';
     const CHANNEL_ORDER = ["HBC", "NHK-E", "NHK-G", "STV", "HTB", "TVh", "UHB"];
 
     const CHANNEL_NAME_MIGRATION = {
@@ -237,6 +248,7 @@
     let programs = [];
     let uninterestingByChannel = {};
     let reservedByChannel = {};
+    let globalExcludeWords = [];  // 全番組対象の除外ワード（部分一致）
     let highlightWords = [];
     let favorites = [];
     let showUninteresting = true;
@@ -298,7 +310,7 @@
     }
 
     function migrateOldData() {
-        const oldKeys = ['tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4'];
+        const oldKeys = ['tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4','tvProgramsV5'];
         for (const key of oldKeys) {
             if (key === STORAGE_KEY) continue;
             const raw = localStorage.getItem(key);
@@ -315,16 +327,17 @@
                 } catch(e) {}
             }
         }
-        const oldSettingsKeys = ['tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4'];
+        const oldSettingsKeys = ['tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4','tvSettingsV5'];
         for (const key of oldSettingsKeys) {
             if (key === SETTINGS_KEY) continue;
             const raw = localStorage.getItem(key);
             if (raw) {
                 try {
                     let data = JSON.parse(raw);
-                    if (data && (data.uninterestingByChannel || data.reservedByChannel || data.highlight)) {
+                    if (data && (data.uninterestingByChannel || data.reservedByChannel || data.highlight || data.globalExcludeWords)) {
                         data.uninterestingByChannel = migrateChannelNames(data.uninterestingByChannel || {});
                         data.reservedByChannel = migrateChannelNames(data.reservedByChannel || {});
+                        if (!data.globalExcludeWords) data.globalExcludeWords = [];
                         localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
                         localStorage.removeItem(key);
                         console.log(`設定移行: ${key}`);
@@ -342,6 +355,7 @@
                 const data = JSON.parse(raw);
                 uninterestingByChannel = data.uninterestingByChannel || {};
                 reservedByChannel = data.reservedByChannel || {};
+                globalExcludeWords = data.globalExcludeWords || [];
                 highlightWords = data.highlight || [];
                 favorites = data.favorites || [];
                 showUninteresting = data.showUninteresting !== false;
@@ -351,11 +365,23 @@
     function saveSettings() {
         try {
             const json = JSON.stringify({
-                uninterestingByChannel, reservedByChannel, highlight: highlightWords, favorites, showUninteresting
+                uninterestingByChannel,
+                reservedByChannel,
+                globalExcludeWords,
+                highlight: highlightWords,
+                favorites,
+                showUninteresting
             });
             localStorage.setItem(SETTINGS_KEY, json);
         } catch(e) { alert('設定の保存に失敗しました。'); }
-        renderAll();
+        // 保存後は番組表示のみ更新（メニュー内のリストは現在のタブが「興味なし」等なら再描画が必要だが、
+        // ここでは呼び出し元に任せる。ただし全体再描画は避けたいので、renderAll() は呼ばない。
+        // 代わりに特定のレンダリングだけ行う。
+        // ここでは renderProgramsForDateAndChannel() のみ更新するため、保存後にそれを呼ぶ。
+        // ただ、他の箇所では saveSettings() の後に renderAll() しているので、それらは修正が必要。
+        // ここでは saveSettings 後に renderAll せず、必要な部分だけ更新する設計に変更する。
+        // 従来の saveSettings 呼び出し元で renderAll しているので、ここでは何もしない。
+        // ただし、編集時のblurによる保存では、番組一覧だけ更新したいので、その場合は saveSettings() 後に renderProgramsForDateAndChannel() を呼ぶ。
     }
 
     function loadPrograms() {
@@ -425,6 +451,7 @@
         return all;
     }
 
+    // 全体的な再描画（日付・チャンネルタブ、番組一覧）
     function renderAll() {
         if (!isWithinRange(selectedDate)) { selectedDate = new Date(); selectedDate.setHours(0,0,0,0); }
         renderDateTabs();
@@ -458,9 +485,17 @@
             renderChannelTabs(todayPrograms);
             renderProgramsForDateAndChannel(todayPrograms);
         }
-        if (menuPanel.classList.contains('open')) { renderUninterestingList(); renderReservedList(); }
-        renderHighlightList();
         updateHeaderButtons();
+    }
+
+    // 番組一覧部分のみ再描画（メニュー内のリストは更新しない）
+    function renderProgramsForDateAndChannelOnly() {
+        if (showFavorites || showHighlighted) return;
+        const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
+        if (todayPrograms.length > 0) {
+            renderChannelTabs(todayPrograms);
+            renderProgramsForDateAndChannel(todayPrograms);
+        }
     }
 
     function renderDateTabs() {
@@ -501,7 +536,8 @@
                 const base = getBaseTitle(p.title);
                 const isUser = uninterestingList.some(w => base.startsWith(w));
                 const dur = (p.rawEnd - p.rawStart)/60000;
-                return !(isUser || (dur <= 5 && dur >= 0));
+                const globalMatch = globalExcludeWords.some(w => p.title.includes(w));
+                return !(isUser || globalMatch || (dur <= 5 && dur >= 0));
             });
         }
         if (filtered.length === 0) { contentDiv.innerHTML = '<div class="empty-message">表示する番組がありません</div>'; return; }
@@ -514,7 +550,8 @@
             const baseTitle = getBaseTitle(p.title);
             const isUserUninteresting = uninterestingList.some(w => baseTitle.startsWith(w));
             const dur = (p.rawEnd - p.rawStart)/60000;
-            const isUninteresting = isUserUninteresting || (dur <= 5 && dur >= 0);
+            const globalMatch = globalExcludeWords.some(w => p.title.includes(w));
+            const isUninteresting = isUserUninteresting || globalMatch || (dur <= 5 && dur >= 0);
             const isReserved = reservedList.some(w => baseTitle.startsWith(w));
             const isFav = favorites.includes(getProgramId(p));
 
@@ -632,7 +669,10 @@
                     const id = item.dataset.programId; if (!id) return;
                     const idx = favorites.indexOf(id);
                     if (idx === -1) favorites.push(id); else favorites.splice(idx, 1);
-                    saveSettings(); renderAll();
+                    saveSettings();
+                    // お気に入り表示中なら再描画、それ以外は一覧のみ更新
+                    if (showFavorites) renderAll();
+                    else renderProgramsForDateAndChannelOnly();
                 }
             });
         });
@@ -670,7 +710,8 @@
                     const list = uninterestingByChannel[ch];
                     const idx = list.indexOf(base);
                     if (idx === -1) list.push(base); else list.splice(idx, 1);
-                    saveSettings(); renderAll();
+                    saveSettings();
+                    renderProgramsForDateAndChannelOnly();
                 } else if (diff < -threshold) {
                     openSearch(item.dataset.title || '');
                 }
@@ -697,6 +738,14 @@
             return `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="reserved" class="edit-word"><span class="count-badge">${count}件</span><button data-action="removeReserved" data-index="${idx}">✕</button></div>`;
         }).join('');
     }
+    function renderExcludeList() {
+        const div = document.getElementById('excludeList');
+        div.innerHTML = globalExcludeWords.map((word, idx) => {
+            // 件数表示は全番組対象だが、ここでは簡易的に現在の日付の全チャンネルでカウント
+            const count = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(word)).length;
+            return `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="exclude" class="edit-word"><span class="count-badge">${count}件</span><button data-action="removeExclude" data-index="${idx}">✕</button></div>`;
+        }).join('');
+    }
     function renderHighlightList() {
         const div = document.getElementById('highlightList');
         div.innerHTML = highlightWords.map((word, idx) => `<div class="list-item"><input type="text" value="${escapeHTML(word)}" data-index="${idx}" data-type="highlight" class="edit-word"><button data-action="removeHighlight" data-index="${idx}">✕</button></div>`).join('');
@@ -708,44 +757,82 @@
         highlightedViewBtn.className = 'header-btn ' + (showHighlighted ? 'active' : 'inactive');
     }
 
+    // ---- イベント処理 ----
     document.addEventListener('click', (e) => {
         const action = e.target.dataset.action;
         if (action === 'removeUninteresting') {
             const list = uninterestingByChannel[selectedChannel] || [];
-            list.splice(parseInt(e.target.dataset.index), 1); saveSettings(); renderUninterestingList();
+            list.splice(parseInt(e.target.dataset.index), 1);
+            saveSettings();
+            renderUninterestingList();
+            renderProgramsForDateAndChannelOnly(); // 番組一覧更新
         } else if (action === 'removeReserved') {
             const list = reservedByChannel[selectedChannel] || [];
-            list.splice(parseInt(e.target.dataset.index), 1); saveSettings(); renderReservedList();
+            list.splice(parseInt(e.target.dataset.index), 1);
+            saveSettings();
+            renderReservedList();
+            renderProgramsForDateAndChannelOnly();
+        } else if (action === 'removeExclude') {
+            globalExcludeWords.splice(parseInt(e.target.dataset.index), 1);
+            saveSettings();
+            renderExcludeList();
+            renderProgramsForDateAndChannelOnly();
         } else if (action === 'removeHighlight') {
-            highlightWords.splice(parseInt(e.target.dataset.index), 1); saveSettings(); renderHighlightList();
+            highlightWords.splice(parseInt(e.target.dataset.index), 1);
+            saveSettings();
+            renderHighlightList();
+            renderProgramsForDateAndChannelOnly();
         }
     });
 
+    // 編集時の入力：配列更新のみ
     document.addEventListener('input', (e) => {
         if (e.target.classList.contains('edit-word')) {
             const idx = parseInt(e.target.dataset.index), type = e.target.dataset.type;
-            const newVal = e.target.value.trim(); if (newVal === '') return;
-            if (type === 'uninteresting') { const list = uninterestingByChannel[selectedChannel] || []; if (idx >= 0 && idx < list.length) list[idx] = newVal; saveSettings(); }
-            else if (type === 'reserved') { const list = reservedByChannel[selectedChannel] || []; if (idx >= 0 && idx < list.length) list[idx] = newVal; saveSettings(); }
-            else if (type === 'highlight') { if (idx >= 0 && idx < highlightWords.length) highlightWords[idx] = newVal; saveSettings(); }
+            const newVal = e.target.value.trim();
+            if (newVal === '') return;
+            if (type === 'uninteresting') {
+                const list = uninterestingByChannel[selectedChannel] || [];
+                if (idx >= 0 && idx < list.length) list[idx] = newVal;
+            } else if (type === 'reserved') {
+                const list = reservedByChannel[selectedChannel] || [];
+                if (idx >= 0 && idx < list.length) list[idx] = newVal;
+            } else if (type === 'exclude') {
+                if (idx >= 0 && idx < globalExcludeWords.length) globalExcludeWords[idx] = newVal;
+            } else if (type === 'highlight') {
+                if (idx >= 0 && idx < highlightWords.length) highlightWords[idx] = newVal;
+            }
         }
     });
 
+    // フォーカスが外れたら保存＋番組一覧再描画
+    document.addEventListener('blur', (e) => {
+        if (e.target.classList.contains('edit-word')) {
+            saveSettings(); // これで localStorage 保存
+            renderProgramsForDateAndChannelOnly();
+        }
+    }, true); // キャプチャフェーズで
+
     document.getElementById('newUninteresting').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addUninterestingBtn').click(); });
     document.getElementById('newReserved').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addReservedBtn').click(); });
+    document.getElementById('newExclude').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addExcludeBtn').click(); });
     document.getElementById('newHighlight').addEventListener('keypress', e => { if (e.key==='Enter') document.getElementById('addHighlightBtn').click(); });
 
     document.getElementById('addUninterestingBtn').addEventListener('click', () => {
         const val = document.getElementById('newUninteresting').value.trim();
-        if (val) { const list = uninterestingByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); uninterestingByChannel[selectedChannel] = list; saveSettings(); renderUninterestingList(); document.getElementById('newUninteresting').value = ''; } }
+        if (val) { const list = uninterestingByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); uninterestingByChannel[selectedChannel] = list; saveSettings(); renderUninterestingList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newUninteresting').value = ''; } }
     });
     document.getElementById('addReservedBtn').addEventListener('click', () => {
         const val = document.getElementById('newReserved').value.trim();
-        if (val) { const list = reservedByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); reservedByChannel[selectedChannel] = list; saveSettings(); renderReservedList(); document.getElementById('newReserved').value = ''; } }
+        if (val) { const list = reservedByChannel[selectedChannel] || []; if (!list.includes(val)) { list.push(val); reservedByChannel[selectedChannel] = list; saveSettings(); renderReservedList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newReserved').value = ''; } }
+    });
+    document.getElementById('addExcludeBtn').addEventListener('click', () => {
+        const val = document.getElementById('newExclude').value.trim();
+        if (val && !globalExcludeWords.includes(val)) { globalExcludeWords.push(val); saveSettings(); renderExcludeList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newExclude').value = ''; }
     });
     document.getElementById('addHighlightBtn').addEventListener('click', () => {
         const val = document.getElementById('newHighlight').value.trim();
-        if (val && !highlightWords.includes(val)) { highlightWords.push(val); saveSettings(); renderHighlightList(); document.getElementById('newHighlight').value = ''; }
+        if (val && !highlightWords.includes(val)) { highlightWords.push(val); saveSettings(); renderHighlightList(); renderProgramsForDateAndChannelOnly(); document.getElementById('newHighlight').value = ''; }
     });
 
     function handlePaste(htmlData, targetDate) {
@@ -787,7 +874,7 @@
     });
 
     exportBtn.addEventListener('click', () => {
-        const data = { programs, settings: { uninterestingByChannel, reservedByChannel, highlightWords, favorites, showUninteresting } };
+        const data = { programs, settings: { uninterestingByChannel, reservedByChannel, globalExcludeWords, highlightWords, favorites, showUninteresting } };
         const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tv-ai-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
     });
@@ -801,6 +888,7 @@
                     programs = data.programs.map(p => ({...p, channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel}));
                     uninterestingByChannel = migrateChannelNames(data.settings.uninterestingByChannel || {});
                     reservedByChannel = migrateChannelNames(data.settings.reservedByChannel || {});
+                    globalExcludeWords = data.settings.globalExcludeWords || [];
                     highlightWords = data.settings.highlightWords || [];
                     favorites = data.settings.favorites || [];
                     showUninteresting = data.settings.showUninteresting !== false;
@@ -813,14 +901,19 @@
     clearBtn.addEventListener('click', () => {
         if (confirm('全データを消去しますか？')) {
             localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY);
-            programs = []; uninterestingByChannel = {}; reservedByChannel = {}; highlightWords = []; favorites = [];
+            programs = []; uninterestingByChannel = {}; reservedByChannel = {}; globalExcludeWords = []; highlightWords = []; favorites = [];
             showUninteresting = true; showFavorites = false; showHighlighted = false;
             selectedDate = new Date(); selectedDate.setHours(0,0,0,0); selectedChannel = CHANNEL_ORDER[0];
             renderAll(); menuPanel.classList.remove('open');
         }
     });
 
-    menuBtn.addEventListener('click', () => { menuPanel.classList.toggle('open'); if (menuPanel.classList.contains('open')) { renderUninterestingList(); renderReservedList(); } });
+    menuBtn.addEventListener('click', () => {
+        menuPanel.classList.toggle('open');
+        if (menuPanel.classList.contains('open')) {
+            renderUninterestingList(); renderReservedList(); renderExcludeList();
+        }
+    });
     document.addEventListener('click', (e) => { if (!menuPanel.contains(e.target) && e.target !== menuBtn) menuPanel.classList.remove('open'); });
     document.querySelectorAll('.menu-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -828,6 +921,9 @@
             tab.classList.add('active');
             document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('active'));
             document.getElementById(tab.dataset.tab).classList.add('active');
+            if (tab.dataset.tab === 'tab-ignore') renderUninterestingList();
+            if (tab.dataset.tab === 'tab-reserved') renderReservedList();
+            if (tab.dataset.tab === 'tab-exclude') renderExcludeList();
         });
     });
 
