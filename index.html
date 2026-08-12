@@ -18,18 +18,19 @@
             font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
             background: #0f0f1a;
             margin: 0; padding: 0; color: #ddd;
-            overscroll-behavior-y: auto;
-            -webkit-overscroll-behavior-y: auto;
+            overflow: hidden; /* 外側のスクロールバーを削除 */
+            overscroll-behavior-y: none;
+            -webkit-overscroll-behavior-y: none;
             user-select: none; -webkit-user-select: none;
             height: 100vh; display: flex; flex-direction: column;
         }
         body.menu-open { overflow: hidden; }
 
         #stickyHeader {
-            position: sticky;
-            top: 0;
+            position: relative; /* stickyから変更し、固定配置はflexで実現 */
             z-index: 100;
             flex-shrink: 0;
+            touch-action: pan-x; /* ヘッダー内での横スワイプを許可、縦方向の誤動作防止 */
         }
 
         #header {
@@ -175,6 +176,7 @@
             min-width: 100%; height: 100%;
             overflow-y: auto; -webkit-overflow-scrolling: touch;
             padding: 8px 16px 24px;
+            touch-action: pan-y; /* 縦スクロールを許可 */
         }
 
         .program-group {
@@ -356,14 +358,14 @@
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v27';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v28';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
     }
 
-    const STORAGE_KEY = 'tvProgramsV27';
-    const SETTINGS_KEY = 'tvSettingsV27';
+    const STORAGE_KEY = 'tvProgramsV28';
+    const SETTINGS_KEY = 'tvSettingsV28';
     const CHANNEL_ORDER = ["HBC", "NHK-E", "NHK-G", "STV", "HTB", "TVh", "UHB"];
     const CHANNEL_NAME_MIGRATION = { "NHK Eテレ": "NHK-E", "NHK総合": "NHK-G", "北海道文化放送": "UHB" };
 
@@ -433,13 +435,13 @@
     function getProgramId(p) { return `${p.rawStart.toISOString()}_${p.channel}_${p.title}`; }
 
     function migrateOldData() {
-        const oldKeys = ['tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4','tvProgramsV5','tvProgramsV6','tvProgramsV7','tvProgramsV8','tvProgramsV9','tvProgramsV10','tvProgramsV11','tvProgramsV12','tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvProgramsV17','tvProgramsV18','tvProgramsV19','tvProgramsV20','tvProgramsV21','tvProgramsV22','tvProgramsV23','tvProgramsV24','tvProgramsV25','tvProgramsV26','tvProgramsFinal'];
+        const oldKeys = ['tvPrograms','tvProgramsV2','tvProgramsV3','tvProgramsV4','tvProgramsV5','tvProgramsV6','tvProgramsV7','tvProgramsV8','tvProgramsV9','tvProgramsV10','tvProgramsV11','tvProgramsV12','tvProgramsV13','tvProgramsV14','tvProgramsV15','tvProgramsV16','tvProgramsV17','tvProgramsV18','tvProgramsV19','tvProgramsV20','tvProgramsV21','tvProgramsV22','tvProgramsV23','tvProgramsV24','tvProgramsV25','tvProgramsV26','tvProgramsV27','tvProgramsFinal'];
         for (const key of oldKeys) {
             if (key === STORAGE_KEY) continue;
             const raw = localStorage.getItem(key);
             if (raw) { try { const d = JSON.parse(raw); if (Array.isArray(d) && d.length > 0) { localStorage.setItem(STORAGE_KEY, raw); localStorage.removeItem(key); break; } } catch(e) {} }
         }
-        const oldSettingsKeys = ['tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4','tvSettingsV5','tvSettingsV6','tvSettingsV7','tvSettingsV8','tvSettingsV9','tvSettingsV10','tvSettingsV11','tvSettingsV12','tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettingsV17','tvSettingsV18','tvSettingsV19','tvSettingsV20','tvSettingsV21','tvSettingsV22','tvSettingsV23','tvSettingsV24','tvSettingsV25','tvSettingsV26','tvSettingsFinal'];
+        const oldSettingsKeys = ['tvSettings','tvSettingsV2','tvSettingsV3','tvSettingsV4','tvSettingsV5','tvSettingsV6','tvSettingsV7','tvSettingsV8','tvSettingsV9','tvSettingsV10','tvSettingsV11','tvSettingsV12','tvSettingsV13','tvSettingsV14','tvSettingsV15','tvSettingsV16','tvSettingsV17','tvSettingsV18','tvSettingsV19','tvSettingsV20','tvSettingsV21','tvSettingsV22','tvSettingsV23','tvSettingsV24','tvSettingsV25','tvSettingsV26','tvSettingsV27','tvSettingsFinal'];
         for (const key of oldSettingsKeys) {
             if (key === SETTINGS_KEY) continue;
             const raw = localStorage.getItem(key);
@@ -717,6 +719,13 @@
             if (!swiping) return;
             const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
             const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
+            
+            // 縦方向の動きが大きい場合はスワイプを中断し、縦スクロールに任せる
+            if (diffY > diffX) {
+                swiping = false;
+                return;
+            }
+            
             if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) {
                 const screenWidth = window.innerWidth;
                 if (startX < screenWidth * 0.15 || startX > screenWidth * 0.85) isHorizontalSwipe = true;
@@ -756,6 +765,9 @@
         attachSwipeEvents();
         attachLongPressToTitles();
     }
+
+    // 以下の関数（renderFavoritesForDate, renderHighlightedForDate, attachLongPressToTitles, attachDoubleTapEvents, attachSwipeEvents, attachMenuSwipeEvents, escapeHTML, renderWordList, getWordListByType, setWordListByType など）は前回提供の完全なコードと同一です。
+    // 省略せずに完全なコードを提供します。
 
     function renderFavoritesForDate() {
         channelTabsDiv.innerHTML = '';
@@ -1076,7 +1088,6 @@
         });
     }
 
-    // メニュー内スワイプ (アニメーション付き、ループ対応)
     function attachMenuSwipeEvents() {
         const types = [
             { wrapperId: 'menuListWrapperIgnore', panelsId: 'menuListPanelsIgnore', type: 'uninteresting' },
@@ -1104,6 +1115,7 @@
                 if (!swiping) return;
                 const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
                 const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
+                if (diffY > diffX) { swiping = false; return; }
                 if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) isHorizontalSwipe = true;
                 if (!isHorizontalSwipe) return;
                 e.preventDefault();
