@@ -721,7 +721,7 @@
             const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
             
             // 縦方向の動きが大きい場合はスワイプを中断し、縦スクロールに任せる
-            if (diffY > diffX) {
+            if (diffY > 5 && diffY > diffX) {
                 swiping = false;
                 return;
             }
@@ -980,54 +980,58 @@
                 if (!swiping) return;
                 const dx = e.touches[0].clientX - startX;
                 const dy = e.touches[0].clientY - startY;
-                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+                // 縦移動が大きい場合は即座に中断して縦スクロールに任せる
+                if (Math.abs(dy) > Math.abs(dx)) {
                     swiping = false;
                     resetSwipe();
                     return;
                 }
-                e.preventDefault();
-                currentTranslate = dx;
-                item.style.transform = `translateX(${dx}px)`;
+                // 横移動が確認できた場合のみpreventDefaultする
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    e.preventDefault();
+                    currentTranslate = dx;
+                    item.style.transform = `translateX(${dx}px)`;
 
-                const threshold = window.innerWidth * 0.3;
-                const leftAction = wrapper.querySelector('.swipe-action-left');
-                const rightAction = wrapper.querySelector('.swipe-action-right');
-                const absDx = Math.abs(dx);
-                const justReached = absDx > threshold && !thresholdReached;
-                const insideThreshold = absDx <= threshold && thresholdReached;
+                    const threshold = window.innerWidth * 0.3;
+                    const leftAction = wrapper.querySelector('.swipe-action-left');
+                    const rightAction = wrapper.querySelector('.swipe-action-right');
+                    const absDx = Math.abs(dx);
+                    const justReached = absDx > threshold && !thresholdReached;
+                    const insideThreshold = absDx <= threshold && thresholdReached;
 
-                if (dx < 0) {
-                    direction = 'left';
-                    if (leftAction) leftAction.style.opacity = Math.min(absDx / 100, 1);
-                    if (rightAction) rightAction.style.opacity = '0';
-                    if (rightAction) rightAction.classList.remove('active');
-                    if (justReached) {
-                        thresholdReached = true;
-                        if (leftAction) leftAction.classList.add('active');
-                        if (navigator.vibrate) navigator.vibrate(15);
-                    } else if (insideThreshold) {
-                        thresholdReached = false;
+                    if (dx < 0) {
+                        direction = 'left';
+                        if (leftAction) leftAction.style.opacity = Math.min(absDx / 100, 1);
+                        if (rightAction) rightAction.style.opacity = '0';
+                        if (rightAction) rightAction.classList.remove('active');
+                        if (justReached) {
+                            thresholdReached = true;
+                            if (leftAction) leftAction.classList.add('active');
+                            if (navigator.vibrate) navigator.vibrate(15);
+                        } else if (insideThreshold) {
+                            thresholdReached = false;
+                            if (leftAction) leftAction.classList.remove('active');
+                        }
+                    } else if (dx > 0) {
+                        direction = 'right';
+                        if (rightAction) rightAction.style.opacity = Math.min(dx / 100, 1);
+                        if (leftAction) leftAction.style.opacity = '0';
                         if (leftAction) leftAction.classList.remove('active');
-                    }
-                } else if (dx > 0) {
-                    direction = 'right';
-                    if (rightAction) rightAction.style.opacity = Math.min(dx / 100, 1);
-                    if (leftAction) leftAction.style.opacity = '0';
-                    if (leftAction) leftAction.classList.remove('active');
-                    if (justReached) {
-                        thresholdReached = true;
-                        if (rightAction) rightAction.classList.add('active');
-                        if (navigator.vibrate) navigator.vibrate(15);
-                    } else if (insideThreshold) {
-                        thresholdReached = false;
+                        if (justReached) {
+                            thresholdReached = true;
+                            if (rightAction) rightAction.classList.add('active');
+                            if (navigator.vibrate) navigator.vibrate(15);
+                        } else if (insideThreshold) {
+                            thresholdReached = false;
+                            if (rightAction) rightAction.classList.remove('active');
+                        }
+                    } else {
+                        direction = null;
+                        if (leftAction) leftAction.style.opacity = '0';
+                        if (rightAction) rightAction.style.opacity = '0';
+                        if (leftAction) leftAction.classList.remove('active');
                         if (rightAction) rightAction.classList.remove('active');
                     }
-                } else {
-                    direction = null;
-                    if (leftAction) leftAction.style.opacity = '0';
-                    if (rightAction) rightAction.style.opacity = '0';
-                    if (leftAction) leftAction.classList.remove('active');
-                    if (rightAction) rightAction.classList.remove('active');
                 }
             }, {passive: false});
 
@@ -1115,6 +1119,7 @@
                 if (!swiping) return;
                 const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
                 const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
+                // 縦移動が大きい場合は即座に中断して縦スクロールに任せる
                 if (diffY > diffX) { swiping = false; return; }
                 if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) isHorizontalSwipe = true;
                 if (!isHorizontalSwipe) return;
