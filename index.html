@@ -31,6 +31,8 @@
             z-index: 100;
             flex-shrink: 0;
             touch-action: pan-x; /* ヘッダー内での横スワイプを許可、縦方向の誤動作防止 */
+            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド・ノッチ対策 */
+            background: #1a1a2e;
         }
 
         #header {
@@ -51,6 +53,7 @@
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: #1e1e30;
             z-index: 200; flex-direction: column;
+            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド対策 */
         }
         #menuPanel.open { display: flex; }
 
@@ -144,6 +147,10 @@
             transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+        /* 番組情報を取り込んでいない日の日付タブは黒文字 */
+        .date-tab.no-data { color: #000000; }
+        .date-tab.no-data.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+
         #channelTabs {
             background: #1a1a2e; border-bottom: 1px solid #333;
             display: flex; flex-wrap: nowrap; align-items: center;
@@ -608,8 +615,12 @@
         const dates = getDateList();
         dateTabsDiv.innerHTML = '';
         dates.forEach(date => {
+            const hasData = programs.some(p => p.displayDate.getTime() === date.getTime());
             const tab = document.createElement('div');
-            tab.className = 'date-tab' + (date.getTime() === selectedDate.getTime() ? ' active' : '');
+            let classes = 'date-tab';
+            if (date.getTime() === selectedDate.getTime()) classes += ' active';
+            if (!hasData) classes += ' no-data'; // 番組情報を取り込んでいない日は黒文字化
+            tab.className = classes;
             tab.textContent = getDisplayDateStr(date);
             tab.addEventListener('click', () => { selectedDate = new Date(date); renderAll(); });
             dateTabsDiv.appendChild(tab);
@@ -767,9 +778,6 @@
         attachLongPressToTitles();
     }
 
-    // 以下の関数（renderFavoritesForDate, renderHighlightedForDate, attachLongPressToTitles, attachDoubleTapEvents, attachSwipeEvents, attachMenuSwipeEvents, escapeHTML, renderWordList, getWordListByType, setWordListByType など）は前回提供の完全なコードと同一です。
-    // 省略せずに完全なコードを提供します。
-
     function renderFavoritesForDate() {
         channelTabsDiv.innerHTML = '';
         const allFavs = programs.filter(p => favorites.includes(getProgramId(p)) && p.displayDate.getTime() === selectedDate.getTime()).sort((a,b) => a.rawStart - b.rawStart);
@@ -850,7 +858,6 @@
             let isLongPress = false;
             let startX = 0, startY = 0;
             const longPressHandler = (e) => {
-                // touchstartではタイマーのセットと座標記録のみを行う（preventDefaultはしない）
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 isLongPress = false;
@@ -1109,6 +1116,12 @@
             let startX = 0, startY = 0, swiping = false, isHorizontalSwipe = false;
 
             function menuTouchStart(e) {
+                // 文字入力中は横スライド移動を無効化
+                const activeTag = document.activeElement ? document.activeElement.tagName : '';
+                if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
+                    swiping = false;
+                    return;
+                }
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 isHorizontalSwipe = false;
@@ -1117,6 +1130,12 @@
             }
             function menuTouchMove(e) {
                 if (!swiping) return;
+                // 入力中にフォーカスが移動した場合の対策
+                const activeTag = document.activeElement ? document.activeElement.tagName : '';
+                if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
+                    swiping = false;
+                    return;
+                }
                 const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
                 const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
                 // 縦移動が大きい場合は即座に中断して縦スクロールに任せる
@@ -1420,3 +1439,4 @@
 </script>
 </body>
 </html>
+
