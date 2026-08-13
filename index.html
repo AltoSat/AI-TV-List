@@ -18,7 +18,7 @@
             font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
             background: #0f0f1a;
             margin: 0; padding: 0; color: #ddd;
-            overflow: hidden; /* 外側のスクロールバーを削除 */
+            overflow: hidden;
             overscroll-behavior-y: none;
             -webkit-overscroll-behavior-y: none;
             user-select: none; -webkit-user-select: none;
@@ -27,11 +27,11 @@
         body.menu-open { overflow: hidden; }
 
         #stickyHeader {
-            position: relative; /* stickyから変更し、固定配置はflexで実現 */
+            position: relative;
             z-index: 100;
             flex-shrink: 0;
-            touch-action: pan-x; /* ヘッダー内での横スワイプを許可、縦方向の誤動作防止 */
-            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド・ノッチ対策 */
+            touch-action: pan-x;
+            padding-top: env(safe-area-inset-top, 0px);
             background: #1a1a2e;
         }
 
@@ -53,13 +53,13 @@
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: #1e1e30;
             z-index: 200; flex-direction: column;
-            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド対策 */
         }
         #menuPanel.open { display: flex; }
 
         #menuHeader {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 14px; background: #2a2a3c; border-bottom: 1px solid #333; flex-shrink: 0;
+            padding-top: calc(10px + env(safe-area-inset-top, 0px));
         }
         #menuHeader span { font-weight: 600; color: #ccc; }
         #menuCloseBtn {
@@ -147,9 +147,8 @@
             transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
-        /* 番組情報を取り込んでいない日の日付タブは黒文字 */
-        .date-tab.no-data { color: #000000; }
-        .date-tab.no-data.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+        .date-tab.no-data { color: #000; }
+        .date-tab.no-data.active { border-bottom-color: #8ab4f8; }
 
         #channelTabs {
             background: #1a1a2e; border-bottom: 1px solid #333;
@@ -182,9 +181,9 @@
         .channel-panel {
             min-width: 100%; height: 100%;
             overflow-y: auto; -webkit-overflow-scrolling: touch;
-            padding: 8px 16px 80px; /* 下部の見切れ防止のために十分な余白を確保 */
-            padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); /* セーフエリア対応 */
-            touch-action: pan-y; /* 縦スクロールを許可 */
+            padding: 8px 16px 80px;
+            padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+            touch-action: pan-y;
         }
 
         .program-group {
@@ -615,12 +614,9 @@
         const dates = getDateList();
         dateTabsDiv.innerHTML = '';
         dates.forEach(date => {
-            const hasData = programs.some(p => p.displayDate.getTime() === date.getTime());
             const tab = document.createElement('div');
-            let classes = 'date-tab';
-            if (date.getTime() === selectedDate.getTime()) classes += ' active';
-            if (!hasData) classes += ' no-data'; // 番組情報を取り込んでいない日は黒文字化
-            tab.className = classes;
+            const hasPrograms = programs.some(p => p.displayDate.getTime() === date.getTime());
+            tab.className = 'date-tab' + (date.getTime() === selectedDate.getTime() ? ' active' : '') + (hasPrograms ? '' : ' no-data');
             tab.textContent = getDisplayDateStr(date);
             tab.addEventListener('click', () => { selectedDate = new Date(date); renderAll(); });
             dateTabsDiv.appendChild(tab);
@@ -731,13 +727,12 @@
             if (!swiping) return;
             const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
             const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
-            
-            // 縦方向の動きが大きい場合はスワイプを中断し、縦スクロールに任せる
+
             if (diffY > 5 && diffY > diffX) {
                 swiping = false;
                 return;
             }
-            
+
             if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) {
                 const screenWidth = window.innerWidth;
                 if (startX < screenWidth * 0.15 || startX > screenWidth * 0.85) isHorizontalSwipe = true;
@@ -987,13 +982,11 @@
                 if (!swiping) return;
                 const dx = e.touches[0].clientX - startX;
                 const dy = e.touches[0].clientY - startY;
-                // 縦移動が大きい場合は即座に中断して縦スクロールに任せる
                 if (Math.abs(dy) > Math.abs(dx)) {
                     swiping = false;
                     resetSwipe();
                     return;
                 }
-                // 横移動が確認できた場合のみpreventDefaultする
                 if (Math.abs(dx) > Math.abs(dy)) {
                     e.preventDefault();
                     currentTranslate = dx;
@@ -1116,9 +1109,7 @@
             let startX = 0, startY = 0, swiping = false, isHorizontalSwipe = false;
 
             function menuTouchStart(e) {
-                // 文字入力中は横スライド移動を無効化
-                const activeTag = document.activeElement ? document.activeElement.tagName : '';
-                if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
+                if (e.target.closest('input, textarea') || (document.activeElement && document.activeElement.closest && document.activeElement.closest('input, textarea'))) {
                     swiping = false;
                     return;
                 }
@@ -1130,15 +1121,8 @@
             }
             function menuTouchMove(e) {
                 if (!swiping) return;
-                // 入力中にフォーカスが移動した場合の対策
-                const activeTag = document.activeElement ? document.activeElement.tagName : '';
-                if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
-                    swiping = false;
-                    return;
-                }
                 const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
                 const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
-                // 縦移動が大きい場合は即座に中断して縦スクロールに任せる
                 if (diffY > diffX) { swiping = false; return; }
                 if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) isHorizontalSwipe = true;
                 if (!isHorizontalSwipe) return;
@@ -1439,4 +1423,3 @@
 </script>
 </body>
 </html>
-
