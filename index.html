@@ -263,6 +263,7 @@
         .program-title {
             font-weight: 600; font-size: 1em; margin-bottom: 2px; line-height: 1.4;
             -webkit-user-select: none; user-select: none;
+            -webkit-touch-callout: none; /* iOS長押しコールアウト抑制 */
         }
         .program-desc {
             font-size: 0.85em; color: #aaa; line-height: 1.5; display: block;
@@ -528,7 +529,8 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    function openSearch(query) { window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank'); }
+    // 長押し時のGoogle検索は同一タブで遷移する（ポップアップブロック回避）
+    function openSearch(query) { window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`; }
 
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
@@ -903,17 +905,21 @@
                     const wrapper = title.closest('.swipe-item-wrapper');
                     const query = wrapper ? wrapper.dataset.title : '';
                     if (query) {
-                        if (navigator.vibrate) navigator.vibrate(20);
-                        openSearch(query);
+                        openSearch(query); // 同一タブ遷移
                     }
                     pressTimer = null;
                 }, 500);
             };
             const moveHandler = (e) => {
                 if (!pressTimer) return;
-                if (Math.abs(e.touches[0].clientX - startX) > 20 || Math.abs(e.touches[0].clientY - startY) > 20) {
+                const dx = Math.abs(e.touches[0].clientX - startX);
+                const dy = Math.abs(e.touches[0].clientY - startY);
+                if (dx > 20 || dy > 20) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
+                } else {
+                    // 長押し判定中の微小な動きではスクロールを抑制
+                    e.preventDefault();
                 }
             };
             const endHandler = (e) => {
@@ -927,8 +933,9 @@
                     isLongPress = false;
                 }
             };
-            title.addEventListener('touchstart', longPressHandler, {passive: true});
-            title.addEventListener('touchmove', moveHandler, {passive: true});
+            // 長押し処理では passive: false にして preventDefault を有効化
+            title.addEventListener('touchstart', longPressHandler, {passive: false});
+            title.addEventListener('touchmove', moveHandler, {passive: false});
             title.addEventListener('touchend', endHandler);
             title.addEventListener('touchcancel', endHandler);
             title.addEventListener('click', (e) => {
@@ -1049,7 +1056,6 @@
                         if (justReached) {
                             thresholdReached = true;
                             if (leftAction) leftAction.classList.add('active');
-                            if (navigator.vibrate) navigator.vibrate(15);
                         } else if (insideThreshold) {
                             thresholdReached = false;
                             if (leftAction) leftAction.classList.remove('active');
@@ -1062,7 +1068,6 @@
                         if (justReached) {
                             thresholdReached = true;
                             if (rightAction) rightAction.classList.add('active');
-                            if (navigator.vibrate) navigator.vibrate(15);
                         } else if (insideThreshold) {
                             thresholdReached = false;
                             if (rightAction) rightAction.classList.remove('active');
