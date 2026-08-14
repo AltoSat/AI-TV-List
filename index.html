@@ -21,6 +21,8 @@
             top: 0;
             left: 0;
             overflow: hidden;
+            overscroll-behavior: none;
+            -webkit-overscroll-behavior: none;
         }
         body {
             font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
@@ -28,6 +30,8 @@
             color: #ddd;
             overscroll-behavior-y: none;
             -webkit-overscroll-behavior-y: none;
+            overscroll-behavior-x: none;
+            -webkit-overscroll-behavior-x: none;
             user-select: none; -webkit-user-select: none;
             display: flex; flex-direction: column;
         }
@@ -182,6 +186,9 @@
 
         .swipe-channel-container {
             height: 100%; overflow: hidden;
+            touch-action: pan-y;
+            overscroll-behavior-x: none;
+            -webkit-overscroll-behavior-x: none;
         }
         .swipe-channel-panels {
             display: flex; height: 100%;
@@ -192,6 +199,8 @@
             padding: 8px 16px 80px;
             padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
             touch-action: pan-y;
+            overscroll-behavior-x: none;
+            -webkit-overscroll-behavior-x: none;
         }
 
         .program-group {
@@ -529,10 +538,32 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    // 長押し時のGoogle検索は同一タブで遷移（履歴を残さない）
+    // 長押し時のGoogle検索は「戻る」操作で番組一覧へ戻れるよう location.href で遷移
+    // 戻ってきた際に「進む」履歴を残さないようにするためのマークを記録する
     function openSearch(query) {
-        window.location.replace(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+        sessionStorage.setItem('longPressSearchReturn', '1');
+        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
     }
+
+    // 番組一覧へ戻ったときにブラウザの「進む」履歴をクリアする
+    function clearForwardHistory() {
+        if (sessionStorage.getItem('longPressSearchReturn') === '1') {
+            sessionStorage.removeItem('longPressSearchReturn');
+            // pushState により現在のエントリ以降の forward 履歴を破棄する
+            if (history.pushState) {
+                history.pushState({ _forwardPrevented: true }, '', location.href);
+            }
+        }
+    }
+
+    // 通常のページ読み込み時
+    window.addEventListener('load', clearForwardHistory);
+    // bfcache から復元された場合（iOS Safari の「戻る」で多い）
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            clearForwardHistory();
+        }
+    });
 
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
