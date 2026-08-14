@@ -983,9 +983,8 @@
                 if (dx > 20 || dy > 20) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
-                } else {
-                    e.preventDefault();
                 }
+                // preventDefaultを削除して縦スクロールを妨げないように修正
             };
 
             const endHandler = (e) => {
