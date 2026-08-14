@@ -529,8 +529,10 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    // 長押し時のGoogle検索は同一タブで遷移する（ポップアップブロック回避）
-    function openSearch(query) { window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`; }
+    // 長押し時のGoogle検索は同一タブで遷移（履歴を残さない）
+    function openSearch(query) {
+        window.location.replace(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+    }
 
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
@@ -896,32 +898,37 @@
             let pressTimer = null;
             let isLongPress = false;
             let startX = 0, startY = 0;
+
             const longPressHandler = (e) => {
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 isLongPress = false;
+
                 pressTimer = setTimeout(() => {
                     isLongPress = true;
                     const wrapper = title.closest('.swipe-item-wrapper');
                     const query = wrapper ? wrapper.dataset.title : '';
                     if (query) {
-                        openSearch(query); // 同一タブ遷移
+                        openSearch(query);
                     }
                     pressTimer = null;
                 }, 500);
             };
+
             const moveHandler = (e) => {
                 if (!pressTimer) return;
                 const dx = Math.abs(e.touches[0].clientX - startX);
                 const dy = Math.abs(e.touches[0].clientY - startY);
+
                 if (dx > 20 || dy > 20) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
                 } else {
-                    // 長押し判定中の微小な動きではスクロールを抑制
+                    // 長押し判定中の微小な動きではスクロール・選択メニューを抑制
                     e.preventDefault();
                 }
             };
+
             const endHandler = (e) => {
                 if (pressTimer) {
                     clearTimeout(pressTimer);
@@ -933,11 +940,12 @@
                     isLongPress = false;
                 }
             };
-            // 長押し処理では passive: false にして preventDefault を有効化
-            title.addEventListener('touchstart', longPressHandler, {passive: false});
-            title.addEventListener('touchmove', moveHandler, {passive: false});
+
+            title.addEventListener('touchstart', longPressHandler, { passive: false });
+            title.addEventListener('touchmove', moveHandler, { passive: false });
             title.addEventListener('touchend', endHandler);
             title.addEventListener('touchcancel', endHandler);
+
             title.addEventListener('click', (e) => {
                 if (isLongPress) {
                     e.preventDefault();
