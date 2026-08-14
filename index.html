@@ -271,7 +271,7 @@
         .program-title {
             font-weight: 600; font-size: 1em; margin-bottom: 2px; line-height: 1.4;
             -webkit-user-select: none; user-select: none;
-            -webkit-touch-callout: none;
+            -webkit-touch-callout: none; /* iOS長押しコールアウト抑制 */
         }
         .program-desc {
             font-size: 0.85em; color: #aaa; line-height: 1.5; display: block;
@@ -419,7 +419,6 @@
             const diffX = Math.abs(currentX - startX);
             const diffY = Math.abs(currentY - startY);
 
-            // 横方向のスワイプが、画面の左右端（30px以内）から始まった場合のみ
             const edgeLeft = startX <= 30;
             const edgeRight = startX >= window.innerWidth - 30;
 
@@ -427,7 +426,6 @@
                 e.preventDefault();
             }
 
-            // 指が離れたらリセット
             if (e.cancelable) startX = null;
         }, { passive: false });
 
@@ -581,9 +579,19 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    // 長押し時のGoogle検索は「戻る」で番組一覧へ戻れるよう location.href で遷移
+    // 長押し時のGoogle検索を別タブで開く（履歴を汚さず、ポップアップブロックを回避）
     function openSearch(query) {
-        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.display = 'none';
+
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     }
 
     function getBaseTitle(fullTitle) {
@@ -961,7 +969,7 @@
                     const wrapper = title.closest('.swipe-item-wrapper');
                     const query = wrapper ? wrapper.dataset.title : '';
                     if (query) {
-                        openSearch(query);
+                        openSearch(query);  // 別タブでGoogle検索を開く
                     }
                     pressTimer = null;
                 }, 500);
