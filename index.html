@@ -431,6 +431,11 @@
     function wordsToObjects(arr) { return arr.map(value => ({ id: generateWordId(), value })); }
     function objectsToWords(objArr) { return objArr.map(o => o.value); }
 
+    function removeGarbageChars(str) {
+        if (!str) return '';
+        return str.replace(/🈓/g, '');
+    }
+
     function migrateChannelNames(obj) {
         if (typeof obj !== 'object' || obj === null) return obj;
         if (Array.isArray(obj)) return obj.map(migrateChannelNames);
@@ -502,7 +507,15 @@
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return [];
             const arr = JSON.parse(raw);
-            return arr.map(obj => ({...obj, channel: CHANNEL_NAME_MIGRATION[obj.channel] || obj.channel, displayDate: new Date(obj.displayDate), rawStart: new Date(obj.rawStart), rawEnd: new Date(obj.rawEnd) }));
+            return arr.map(obj => ({
+                ...obj, 
+                title: removeGarbageChars(obj.title),
+                description: removeGarbageChars(obj.description),
+                channel: CHANNEL_NAME_MIGRATION[obj.channel] || obj.channel, 
+                displayDate: new Date(obj.displayDate), 
+                rawStart: new Date(obj.rawStart), 
+                rawEnd: new Date(obj.rawEnd) 
+            }));
         } catch(e) { return []; }
     }
     function savePrograms() {
@@ -515,9 +528,10 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    function openSearch(query) { openExternal(`https://www.google.com/search?q=${encodeURIComponent(query)}`); }
+    function openSearch(query) { window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank'); }
 
     function getBaseTitle(fullTitle) {
+        fullTitle = removeGarbageChars(fullTitle);
         const separators = "🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻🈞【▽▼#（★第";
         let firstIdx = -1;
         for (const ch of separators) { const idx = fullTitle.indexOf(ch); if (idx !== -1 && (firstIdx === -1 || idx < firstIdx)) firstIdx = idx; }
@@ -552,8 +566,8 @@
                 const s = li.getAttribute('s'), e = li.getAttribute('e');
                 if (!s || !e) return;
                 const titleEl = li.querySelector('.program_title'), detailEl = li.querySelector('.program_detail');
-                const title = titleEl ? titleEl.textContent.trim() : '(タイトルなし)';
-                const desc = detailEl ? detailEl.textContent.trim() : '';
+                const title = removeGarbageChars(titleEl ? titleEl.textContent.trim() : '(タイトルなし)');
+                const desc = removeGarbageChars(detailEl ? detailEl.textContent.trim() : '');
                 const parseTime = str => new Date(+str.substring(0,4), +str.substring(4,6)-1, +str.substring(6,8), +str.substring(8,10), +str.substring(10,12));
                 all.push({ channel: ch, title, description: desc, rawStart: parseTime(s), rawEnd: parseTime(e) });
             });
@@ -753,6 +767,11 @@
             
             if (diffY > 5 && diffY > diffX) {
                 swiping = false;
+                if (isHorizontalSwipe) {
+                    isHorizontalSwipe = false;
+                    panels.style.transition = 'transform 0.2s ease-out';
+                    panels.style.transform = 'translateX(-100%)';
+                }
                 return;
             }
             
@@ -1201,7 +1220,11 @@
         });
     }
 
-    function escapeHTML(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+    function escapeHTML(str) { 
+        const div = document.createElement('div'); 
+        div.textContent = removeGarbageChars(str); 
+        return div.innerHTML; 
+    }
 
     const collator = new Intl.Collator('ja');
 
@@ -1282,7 +1305,7 @@
             const id = e.target.dataset.id, type = e.target.dataset.type;
             let list = getWordListByType(type);
             const item = list.find(it => it.id === id);
-            if (item) item.value = e.target.value.trim();
+            if (item) item.value = removeGarbageChars(e.target.value.trim());
         }
     });
 
@@ -1308,7 +1331,7 @@
         const inputs = ['newUninteresting','newReserved','newExclude','newHighlight'];
         document.getElementById(btnId).addEventListener('click', () => {
             const input = document.getElementById(inputs[i]);
-            const val = input.value.trim();
+            const val = removeGarbageChars(input.value.trim());
             if (!val) return;
             let list = getWordListByType(types[i]);
             if (!list.some(item => item.value === val)) {
@@ -1396,7 +1419,12 @@
             try {
                 const data = JSON.parse(ev.target.result);
                 if (data.programs && data.settings) {
-                    programs = data.programs.map(p => ({...p, channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel}));
+                    programs = data.programs.map(p => ({
+                        ...p, 
+                        title: removeGarbageChars(p.title),
+                        description: removeGarbageChars(p.description),
+                        channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel
+                    }));
                     uninterestingByChannel = {}; for (const [k,v] of Object.entries(data.settings.uninterestingByChannel || {})) uninterestingByChannel[k] = wordsToObjects(v);
                     reservedByChannel = {}; for (const [k,v] of Object.entries(data.settings.reservedByChannel || {})) reservedByChannel[k] = wordsToObjects(v);
                     globalExcludeWords = wordsToObjects(data.settings.globalExcludeWords || []);
@@ -1447,7 +1475,12 @@
     window.addEventListener('load', () => {
         migrateOldData(); loadSettings(); migrateWordLists();
         programs = loadPrograms();
-        programs = programs.map(p => ({...p, channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel}));
+        programs = programs.map(p => ({
+            ...p, 
+            title: removeGarbageChars(p.title),
+            description: removeGarbageChars(p.description),
+            channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel
+        }));
         if (programs.length > 0) {
             const today = new Date(); today.setHours(0,0,0,0);
             selectedDate = programs.find(p => p.displayDate.getTime() === today.getTime()) ? today : programs[0].displayDate;
@@ -1460,4 +1493,3 @@
 </script>
 </body>
 </html>
-
