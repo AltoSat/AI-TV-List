@@ -17,7 +17,7 @@
         html, body {
             width: 100%;
             height: 100%;
-            position: fixed; /* iOSでキーボード表示時に画面全体が押し上げられるのを防止 */
+            position: fixed;
             top: 0;
             left: 0;
             overflow: hidden;
@@ -42,7 +42,7 @@
             z-index: 100;
             flex-shrink: 0;
             touch-action: pan-x;
-            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド・ノッチ対策 */
+            padding-top: env(safe-area-inset-top, 0px);
             background: #1a1a2e;
         }
 
@@ -64,7 +64,7 @@
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: #1e1e30;
             z-index: 200; flex-direction: column;
-            padding-top: env(safe-area-inset-top, 0px); /* ダイナミックアイランド対策 */
+            padding-top: env(safe-area-inset-top, 0px);
         }
         #menuPanel.open { display: flex; }
 
@@ -158,7 +158,6 @@
             transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
-        /* 番組情報を取り込んでいない日の日付タブは黒文字 */
         .date-tab.no-data { color: #000000; }
         .date-tab.no-data.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
 
@@ -272,7 +271,7 @@
         .program-title {
             font-weight: 600; font-size: 1em; margin-bottom: 2px; line-height: 1.4;
             -webkit-user-select: none; user-select: none;
-            -webkit-touch-callout: none; /* iOS長押しコールアウト抑制 */
+            -webkit-touch-callout: none;
         }
         .program-desc {
             font-size: 0.85em; color: #aaa; line-height: 1.5; display: block;
@@ -389,7 +388,6 @@
         });
     }
 
-    // iOSで入力キーボードが閉じた後やフォーカスアウト時に全体スクロール位置を0に強制復帰
     function resetViewportScroll() {
         window.scrollTo(0, 0);
         document.body.scrollTop = 0;
@@ -400,6 +398,51 @@
             setTimeout(resetViewportScroll, 100);
         }
     });
+
+    // 画面端からの横スワイプによるブラウザ履歴移動を抑制する
+    function preventEdgeSwipeNavigation() {
+        let startX = null;
+        let startY = null;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (startX === null || e.touches.length !== 1) return;
+
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = Math.abs(currentX - startX);
+            const diffY = Math.abs(currentY - startY);
+
+            // 横方向のスワイプが、画面の左右端（30px以内）から始まった場合のみ
+            const edgeLeft = startX <= 30;
+            const edgeRight = startX >= window.innerWidth - 30;
+
+            if ((edgeLeft || edgeRight) && diffX > diffY && diffX > 10) {
+                e.preventDefault();
+            }
+
+            // 指が離れたらリセット
+            if (e.cancelable) startX = null;
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            startX = null;
+            startY = null;
+        }, { passive: true });
+
+        document.addEventListener('touchcancel', () => {
+            startX = null;
+            startY = null;
+        }, { passive: true });
+    }
+
+    preventEdgeSwipeNavigation();
 
     const STORAGE_KEY = 'tvProgramsV28';
     const SETTINGS_KEY = 'tvSettingsV28';
@@ -518,13 +561,13 @@
             if (!raw) return [];
             const arr = JSON.parse(raw);
             return arr.map(obj => ({
-                ...obj, 
+                ...obj,
                 title: removeGarbageChars(obj.title),
                 description: removeGarbageChars(obj.description),
-                channel: CHANNEL_NAME_MIGRATION[obj.channel] || obj.channel, 
-                displayDate: new Date(obj.displayDate), 
-                rawStart: new Date(obj.rawStart), 
-                rawEnd: new Date(obj.rawEnd) 
+                channel: CHANNEL_NAME_MIGRATION[obj.channel] || obj.channel,
+                displayDate: new Date(obj.displayDate),
+                rawStart: new Date(obj.rawStart),
+                rawEnd: new Date(obj.rawEnd)
             }));
         } catch(e) { return []; }
     }
@@ -538,32 +581,10 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    // 長押し時のGoogle検索は「戻る」操作で番組一覧へ戻れるよう location.href で遷移
-    // 戻ってきた際に「進む」履歴を残さないようにするためのマークを記録する
+    // 長押し時のGoogle検索は「戻る」で番組一覧へ戻れるよう location.href で遷移
     function openSearch(query) {
-        sessionStorage.setItem('longPressSearchReturn', '1');
         window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
     }
-
-    // 番組一覧へ戻ったときにブラウザの「進む」履歴をクリアする
-    function clearForwardHistory() {
-        if (sessionStorage.getItem('longPressSearchReturn') === '1') {
-            sessionStorage.removeItem('longPressSearchReturn');
-            // pushState により現在のエントリ以降の forward 履歴を破棄する
-            if (history.pushState) {
-                history.pushState({ _forwardPrevented: true }, '', location.href);
-            }
-        }
-    }
-
-    // 通常のページ読み込み時
-    window.addEventListener('load', clearForwardHistory);
-    // bfcache から復元された場合（iOS Safari の「戻る」で多い）
-    window.addEventListener('pageshow', (event) => {
-        if (event.persisted) {
-            clearForwardHistory();
-        }
-    });
 
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
@@ -687,7 +708,7 @@
             const tab = document.createElement('div');
             let classes = 'date-tab';
             if (date.getTime() === selectedDate.getTime()) classes += ' active';
-            if (!hasData) classes += ' no-data'; // 番組情報を取り込んでいない日は黒文字化
+            if (!hasData) classes += ' no-data';
             tab.className = classes;
             tab.textContent = getDisplayDateStr(date);
             tab.addEventListener('click', () => { selectedDate = new Date(date); renderAll(); });
@@ -799,7 +820,7 @@
             if (!swiping) return;
             const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
             const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
-            
+
             if (diffY > 5 && diffY > diffX) {
                 swiping = false;
                 if (isHorizontalSwipe) {
@@ -809,7 +830,7 @@
                 }
                 return;
             }
-            
+
             if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) {
                 const screenWidth = window.innerWidth;
                 if (startX < screenWidth * 0.15 || startX > screenWidth * 0.85) isHorizontalSwipe = true;
@@ -955,7 +976,6 @@
                     clearTimeout(pressTimer);
                     pressTimer = null;
                 } else {
-                    // 長押し判定中の微小な動きではスクロール・選択メニューを抑制
                     e.preventDefault();
                 }
             };
@@ -1195,7 +1215,6 @@
             let startX = 0, startY = 0, swiping = false, isHorizontalSwipe = false;
 
             function menuTouchStart(e) {
-                // 文字入力中は横スライド移動を無効化
                 const activeTag = document.activeElement ? document.activeElement.tagName : '';
                 if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
                     swiping = false;
@@ -1264,10 +1283,10 @@
         });
     }
 
-    function escapeHTML(str) { 
-        const div = document.createElement('div'); 
-        div.textContent = removeGarbageChars(str); 
-        return div.innerHTML; 
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = removeGarbageChars(str);
+        return div.innerHTML;
     }
 
     const collator = new Intl.Collator('ja');
@@ -1464,7 +1483,7 @@
                 const data = JSON.parse(ev.target.result);
                 if (data.programs && data.settings) {
                     programs = data.programs.map(p => ({
-                        ...p, 
+                        ...p,
                         title: removeGarbageChars(p.title),
                         description: removeGarbageChars(p.description),
                         channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel
@@ -1520,7 +1539,7 @@
         migrateOldData(); loadSettings(); migrateWordLists();
         programs = loadPrograms();
         programs = programs.map(p => ({
-            ...p, 
+            ...p,
             title: removeGarbageChars(p.title),
             description: removeGarbageChars(p.description),
             channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel
