@@ -273,7 +273,7 @@
         .program-title {
             font-weight: 600; font-size: 1em; margin-bottom: 2px; line-height: 1.4;
             -webkit-user-select: none; user-select: none;
-            -webkit-touch-callout: none; /* iOS長押しコールアウト抑制 */
+            -webkit-touch-callout: none;
         }
         .program-desc {
             font-size: 0.85em; color: #aaa; line-height: 1.5; display: block;
@@ -294,7 +294,6 @@
         }
         .hidden-file-input { display: none; }
         .empty-paste-area { padding: 20px; }
-        .paste-hint { font-size: 0.8em; color: #8ab4f8; padding: 6px 12px 0; }
     </style>
 </head>
 <body>
@@ -327,14 +326,6 @@
         <div class="menu-tab" data-tab="tab-backup">保存</div>
     </div>
     <div id="menuContentWrapper">
-        <div class="menu-content" id="tab-paste">
-            <div class="paste-hint" id="pasteHint"></div>
-            <div class="input-area">
-                <textarea id="pasteArea" placeholder="Gガイドの1日分をコピーして貼り付け"></textarea>
-                <button id="openGguideBtn" class="small-btn">Gガイド</button>
-            </div>
-            <div class="menu-list-panel"></div>
-        </div>
         <div class="menu-content active" id="tab-ignore">
             <div class="menu-channel-tabs" id="menuChannelTabsIgnore"></div>
             <div class="input-area">
@@ -385,7 +376,7 @@
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v29';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v30';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
@@ -395,12 +386,6 @@
         window.scrollTo(0, 0);
         document.body.scrollTop = 0;
     }
-
-    document.addEventListener('focusout', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            setTimeout(resetViewportScroll, 100);
-        }
-    });
 
     // ============================================================
     //  画面端からの横スワイプによるブラウザ履歴移動を抑制する
@@ -449,12 +434,10 @@
 
     // ============================================================
     //  ジェスチャー領域の判定
-    //  画面左右の EDGE_ZONE_RATIO を「チャンネル切替スワイプ領域」、
-    //  中央を「番組行の左右スワイプ領域」とする。
     // ============================================================
-    const EDGE_ZONE_RATIO = 0.3;      // ← 0.3 = 画面左右30%ずつがチャンネル切替領域
-    const H_LOCK_PX = 8;              // 横方向と確定する移動量(px)
-    const V_YIELD_PX = 18;            // 縦スクロールに譲る移動量(px)
+    const EDGE_ZONE_RATIO = 0.3;
+    const H_LOCK_PX = 8;
+    const V_YIELD_PX = 18;
 
     function getTouchZone(x) {
         const w = window.innerWidth;
@@ -487,9 +470,6 @@
     const menuBtn = document.getElementById('menuBtn');
     const menuPanel = document.getElementById('menuPanel');
     const menuCloseBtn = document.getElementById('menuCloseBtn');
-    const pasteArea = document.getElementById('pasteArea');
-    const pasteHint = document.getElementById('pasteHint');
-    const openGguideBtn = document.getElementById('openGguideBtn');
     const dateTabsDiv = document.getElementById('dateTabs');
     const channelTabsDiv = document.getElementById('channelTabs');
     const filterTitleDiv = document.getElementById('filterTitle');
@@ -509,6 +489,17 @@
     function removeGarbageChars(str) {
         if (!str) return '';
         return str.replace(/🈓/g, '');
+    }
+
+    // ============================================================
+    //  🈟(無) 🈡(新) などの先頭記号・絵文字・囲み文字を除去
+    // ============================================================
+    function stripLeadingSymbols(str) {
+        if (!str) return '';
+        return str.replace(
+            /^[\s\u{1F000}-\u{1FAFF}\u{1F100}-\u{1F1FF}\u{2460}-\u{24FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{2000}-\u{200F}\u{2028}-\u{202F}\u{205F}-\u{206F}\u{20E3}\u{2190}-\u{21FF}★☆▲△▼▽■□●○◆◇※]+/gu,
+            ''
+        ).trim();
     }
 
     function migrateChannelNames(obj) {
@@ -603,23 +594,26 @@
 
     function openExternal(url) { window.open(url, '_blank'); }
     function openGguideForDate(date) { openExternal(`https://bangumi.org/epg/td?broad_cast_date=${getDateStr(date)}&ggm_group_id=1`); }
-    // 長押し時のGoogle検索を別タブで開く（履歴を汚さず、ポップアップブロックを回避）
     function openSearch(query) {
         const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-
         const a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         a.style.display = 'none';
-
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     }
 
+    // ============================================================
+    //  ベースタイトル取得
+    //  先頭の記号・絵文字・囲み文字（🈟, 🈡 等）を除去してから
+    //  既存の区切り文字処理を行う。
+    // ============================================================
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
+        fullTitle = stripLeadingSymbols(fullTitle);
         const separators = "🈑🈓🈔🈕🈖🈗🈘🈩🈪🈫🈬🈭🈮🈯🈰🈱🈲🈳🈴🈵🈶🈷🈸🈹🈺🈻🈞【▽▼#（★第";
         let firstIdx = -1;
         for (const ch of separators) { const idx = fullTitle.indexOf(ch); if (idx !== -1 && (firstIdx === -1 || idx < firstIdx)) firstIdx = idx; }
@@ -729,15 +723,32 @@
         } catch (e) { console.error('renderAll error:', e); }
     }
 
+    // ============================================================
+    //  番組表のみ再描画（スクロール位置を保持）
+    // ============================================================
     function renderProgramsForDateAndChannelOnly() {
         if (showFavorites || showHighlighted) return;
         const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
-        if (todayPrograms.length > 0) { renderChannelTabs(todayPrograms); renderProgramsForDateAndChannel(todayPrograms); }
+        if (todayPrograms.length === 0) return;
+
+        const savedScrolls = {};
+        contentDiv.querySelectorAll('.channel-panel').forEach(p => {
+            savedScrolls[p.dataset.channel] = p.scrollTop;
+        });
+
+        renderChannelTabs(todayPrograms);
+        renderProgramsForDateAndChannel(todayPrograms);
+
+        contentDiv.querySelectorAll('.channel-panel').forEach(p => {
+            if (savedScrolls[p.dataset.channel] !== undefined) {
+                p.scrollTop = savedScrolls[p.dataset.channel];
+            }
+        });
     }
 
-    // ------------------------------------------------------------
-    //  日付タブ（長押しで「取込」パネルを開く）
-    // ------------------------------------------------------------
+    // ============================================================
+    //  日付タブ（長押しで番組表未登録時と同じ動作）
+    // ============================================================
     function renderDateTabs() {
         const dates = getDateList();
         dateTabsDiv.innerHTML = '';
@@ -778,7 +789,11 @@
                 longPressed = true;
                 tab.classList.remove('pressing');
                 if (navigator.vibrate) { try { navigator.vibrate(15); } catch(_) {} }
-                openPastePanel(date);
+                // 番組表未登録時と同じ動作：日付を選択して renderAll
+                selectedDate = new Date(date);
+                selectedDate.setHours(0, 0, 0, 0);
+                suppressGguideAutoOpen = false;
+                renderAll();
             }, 550);
         };
 
@@ -818,32 +833,6 @@
             selectedDate = new Date(date);
             renderAll();
         });
-    }
-
-    // ------------------------------------------------------------
-    //  「取込」パネルを開く
-    // ------------------------------------------------------------
-    function openPastePanel(date) {
-        if (date) {
-            selectedDate = new Date(date);
-            selectedDate.setHours(0, 0, 0, 0);
-        }
-        suppressGguideAutoOpen = true;   // 自動でGガイドを開かない
-        renderAll();
-
-        menuPanel.classList.add('open');
-        document.body.classList.add('menu-open');
-        switchMenuTab('tab-paste');
-
-        const label = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}（${getDisplayDateStr(selectedDate)}）の番組表を貼り付け`;
-        pasteHint.textContent = label;
-        pasteArea.placeholder = label;
-        pasteArea.value = '';
-
-        setTimeout(() => {
-            try { pasteArea.focus({ preventScroll: true }); } catch(_) {}
-            resetViewportScroll();
-        }, 150);
     }
 
     function switchMenuTab(tabId) {
@@ -949,12 +938,6 @@
         const panels = document.getElementById('swipePanels');
         panels.style.transform = 'translateX(-100%)';
 
-        // ========================================================
-        //  チャンネル切替スワイプ
-        //  ・左右の端 30% を判定範囲にする
-        //  ・最初の横移動 8px で横スワイプに確定（縦スクロールに奪われない）
-        //  ・縦方向が明らかに優勢な時のみスクロールに譲る
-        // ========================================================
         let startX = 0, startY = 0;
         let swiping = false;
         let isHorizontalSwipe = false;
@@ -989,12 +972,10 @@
             const absY = Math.abs(diffY);
 
             if (!isHorizontalSwipe) {
-                // 縦スクロールが明らかに優勢なときだけ譲る
                 if (absY > V_YIELD_PX && absY > absX * 1.5) {
                     cancelChannelSwipe(true);
                     return;
                 }
-                // 少しでも横に動いたら横スワイプ確定（端領域なので優先）
                 if (absX > H_LOCK_PX) {
                     isHorizontalSwipe = true;
                 } else {
@@ -1134,7 +1115,7 @@
                     const wrapper = title.closest('.swipe-item-wrapper');
                     const query = wrapper ? wrapper.dataset.title : '';
                     if (query) {
-                        openSearch(query);  // 別タブでGoogle検索を開く
+                        openSearch(query);
                     }
                     pressTimer = null;
                 }, 500);
@@ -1144,8 +1125,6 @@
                 if (!pressTimer) return;
                 const dx = Math.abs(e.touches[0].clientX - startX);
                 const dy = Math.abs(e.touches[0].clientY - startY);
-
-                // 10px 動いたら長押しをキャンセル（横スワイプ確定と競合しないように）
                 if (dx > 10 || dy > 10) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
@@ -1250,7 +1229,6 @@
             wrapper.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
                 const tx = e.touches[0].clientX;
-                // 画面左右の端はチャンネル切替に使うので、中央のみ行スワイプ
                 if (getTouchZone(tx) !== 'center') return;
                 startX = tx;
                 startY = e.touches[0].clientY;
@@ -1463,10 +1441,21 @@
 
     const collator = new Intl.Collator('ja');
 
+    // ============================================================
+    //  単語リスト描画（スクロール位置を保持）
+    // ============================================================
     function renderWordList(containerId, words, type, panelsId) {
         const panels = panelsId ? document.getElementById(panelsId) : null;
         const targetEl = panels || document.getElementById(containerId);
         if (!targetEl) return;
+
+        // スクロール位置を保存
+        const savedScrolls = [];
+        if (panels) {
+            panels.querySelectorAll('.menu-list-panel').forEach(p => savedScrolls.push(p.scrollTop));
+        } else {
+            savedScrolls.push(targetEl.scrollTop);
+        }
 
         const buildListHTML = (chWords) => {
             const sortedCh = chWords.map(w => ({ ...w })).sort((a, b) => collator.compare(a.value, b.value));
@@ -1503,6 +1492,17 @@
         } else {
             targetEl.innerHTML = buildListHTML(words);
         }
+
+        // スクロール位置を復元
+        requestAnimationFrame(() => {
+            if (panels) {
+                panels.querySelectorAll('.menu-list-panel').forEach((p, i) => {
+                    if (savedScrolls[i] !== undefined) p.scrollTop = savedScrolls[i];
+                });
+            } else if (savedScrolls[0] !== undefined) {
+                targetEl.scrollTop = savedScrolls[0];
+            }
+        });
     }
 
     function getWordListByType(type) {
@@ -1543,20 +1543,37 @@
         }
     });
 
+    // ============================================================
+    //  編集の blur / focus 処理
+    //  focus が別の edit-word に移った瞬間に再描画タイマーをキャンセルし
+    //  無駄な再描画・スライドを抑制する。
+    // ============================================================
     let blurTimer = null;
+
+    document.addEventListener('focus', (e) => {
+        if (e.target.classList && e.target.classList.contains('edit-word')) {
+            if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
+            saveSettings();
+        }
+    }, true);
+
     document.addEventListener('blur', (e) => {
-        if (e.target.classList.contains('edit-word')) {
+        if (e.target.classList && e.target.classList.contains('edit-word')) {
             if (blurTimer) clearTimeout(blurTimer);
             blurTimer = setTimeout(() => {
-                if (document.activeElement?.classList.contains('edit-word')) return;
-                saveSettings(); renderProgramsForDateAndChannelOnly();
+                if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('edit-word')) {
+                    blurTimer = null;
+                    return;
+                }
+                saveSettings();
+                renderProgramsForDateAndChannelOnly();
                 const type = e.target.dataset.type;
                 if (type === 'uninteresting') renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting', 'menuListPanelsIgnore');
                 else if (type === 'reserved') renderWordList('reservedList', reservedByChannel[selectedChannel] || [], 'reserved', 'menuListPanelsReserved');
                 else if (type === 'exclude') renderWordList('excludeList', globalExcludeWords, 'exclude');
                 else if (type === 'highlight') renderWordList('highlightList', highlightWords, 'highlight');
                 blurTimer = null;
-            }, 100);
+            }, 250);
         }
     }, true);
 
@@ -1625,22 +1642,12 @@
             programs = programs.filter(p => p.displayDate.getTime() !== targetDate.getTime());
             programs.push(...unique);
             savePrograms(); selectedDate = new Date(targetDate); selectedChannel = CHANNEL_ORDER[0];
-            showFavorites = false; showHighlighted = false; renderAll(); pasteArea.value = ''; pasteHint.textContent = '';
+            showFavorites = false; showHighlighted = false; renderAll();
             menuPanel.classList.remove('open');
             document.body.classList.remove('menu-open');
             resetViewportScroll();
         } catch (err) { alert('解析エラー: ' + err.message); }
     }
-
-    document.addEventListener('paste', (e) => {
-        if (e.target !== pasteArea) return;
-        e.preventDefault(); const cb = e.clipboardData || window.clipboardData;
-        if (!cb) return; const htmlData = cb.getData('text/html'); pasteArea.value = cb.getData('text/plain') || '';
-        if (!htmlData) { alert('HTML形式のデータが取得できませんでした。'); return; }
-        handlePaste(htmlData, selectedDate);
-    });
-
-    openGguideBtn.addEventListener('click', () => openGguideForDate(selectedDate));
 
     exportBtn.addEventListener('click', () => {
         const data = { programs, settings: { uninterestingByChannel: Object.fromEntries(Object.entries(uninterestingByChannel).map(([k,v]) => [k, objectsToWords(v)])), reservedByChannel: Object.fromEntries(Object.entries(reservedByChannel).map(([k,v]) => [k, objectsToWords(v)])), globalExcludeWords: objectsToWords(globalExcludeWords), highlightWords: objectsToWords(highlightWords), favorites, showUninteresting } };
