@@ -156,10 +156,12 @@
             flex: 1 1 auto; padding: 6px 4px; font-size: 0.75em; font-weight: 600;
             color: #888; cursor: pointer; border-bottom: 3px solid transparent;
             transition: 0.2s; text-align: center; min-width: 0; flex-shrink: 1;
+            -webkit-touch-callout: none;
         }
         .date-tab.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
         .date-tab.no-data { color: #000000; }
         .date-tab.no-data.active { color: #8ab4f8; border-bottom-color: #8ab4f8; }
+        .date-tab.pressing { background: #2a2a3c; color: #fbbf24; }
 
         #channelTabs {
             background: #1a1a2e; border-bottom: 1px solid #333;
@@ -292,6 +294,7 @@
         }
         .hidden-file-input { display: none; }
         .empty-paste-area { padding: 20px; }
+        .paste-hint { font-size: 0.8em; color: #8ab4f8; padding: 6px 12px 0; }
     </style>
 </head>
 <body>
@@ -321,11 +324,11 @@
         <div class="menu-tab active" data-tab="tab-ignore">不要</div>
         <div class="menu-tab" data-tab="tab-highlight">強調</div>
         <div class="menu-tab" data-tab="tab-exclude">除外</div>
-        <div class="menu-tab" data-tab="tab-paste">取込</div>
         <div class="menu-tab" data-tab="tab-backup">保存</div>
     </div>
     <div id="menuContentWrapper">
         <div class="menu-content" id="tab-paste">
+            <div class="paste-hint" id="pasteHint"></div>
             <div class="input-area">
                 <textarea id="pasteArea" placeholder="Gガイドの1日分をコピーして貼り付け"></textarea>
                 <button id="openGguideBtn" class="small-btn">Gガイド</button>
@@ -382,7 +385,7 @@
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v28';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v29';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
@@ -399,7 +402,9 @@
         }
     });
 
-    // 画面端からの横スワイプによるブラウザ履歴移動を抑制する
+    // ============================================================
+    //  画面端からの横スワイプによるブラウザ履歴移動を抑制する
+    // ============================================================
     function preventEdgeSwipeNavigation() {
         let startX = null;
         let startY = null;
@@ -423,7 +428,7 @@
             const edgeRight = startX >= window.innerWidth - 30;
 
             if ((edgeLeft || edgeRight) && diffX > diffY && diffX > 10) {
-                e.preventDefault();
+                if (e.cancelable) e.preventDefault();
             }
 
             if (e.cancelable) startX = null;
@@ -442,6 +447,22 @@
 
     preventEdgeSwipeNavigation();
 
+    // ============================================================
+    //  ジェスチャー領域の判定
+    //  画面左右の EDGE_ZONE_RATIO を「チャンネル切替スワイプ領域」、
+    //  中央を「番組行の左右スワイプ領域」とする。
+    // ============================================================
+    const EDGE_ZONE_RATIO = 0.3;      // ← 0.3 = 画面左右30%ずつがチャンネル切替領域
+    const H_LOCK_PX = 8;              // 横方向と確定する移動量(px)
+    const V_YIELD_PX = 18;            // 縦スクロールに譲る移動量(px)
+
+    function getTouchZone(x) {
+        const w = window.innerWidth;
+        if (x <= w * EDGE_ZONE_RATIO) return 'left';
+        if (x >= w * (1 - EDGE_ZONE_RATIO)) return 'right';
+        return 'center';
+    }
+
     const STORAGE_KEY = 'tvProgramsV28';
     const SETTINGS_KEY = 'tvSettingsV28';
     const CHANNEL_ORDER = ["HBC", "NHK-E", "NHK-G", "STV", "HTB", "TVh", "UHB"];
@@ -457,6 +478,8 @@
     let showFavorites = false;
     let showHighlighted = false;
 
+    let suppressGguideAutoOpen = false;
+
     let selectedDate = new Date();
     selectedDate.setHours(0,0,0,0);
     let selectedChannel = CHANNEL_ORDER[0];
@@ -465,6 +488,7 @@
     const menuPanel = document.getElementById('menuPanel');
     const menuCloseBtn = document.getElementById('menuCloseBtn');
     const pasteArea = document.getElementById('pasteArea');
+    const pasteHint = document.getElementById('pasteHint');
     const openGguideBtn = document.getElementById('openGguideBtn');
     const dateTabsDiv = document.getElementById('dateTabs');
     const channelTabsDiv = document.getElementById('channelTabs');
@@ -658,6 +682,9 @@
 
     function renderAll() {
         try {
+            const autoOpenGguide = !suppressGguideAutoOpen;
+            suppressGguideAutoOpen = false;
+
             if (!isWithinRange(selectedDate)) { selectedDate = new Date(); selectedDate.setHours(0,0,0,0); }
             renderDateTabs();
             renderMenuChannelTabs();
@@ -678,7 +705,7 @@
             const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
             if (todayPrograms.length === 0) {
                 contentDiv.innerHTML = `<div class="empty-paste-area"><p style="margin-bottom:12px;">この日付の番組データがありません。</p><textarea id="emptyPasteArea" placeholder="ここに番組表を貼り付け" style="width:100%; height:100px; background:#2a2a3c; color:#ddd; border:1px solid #444; border-radius:6px; padding:8px;"></textarea><button id="emptyGguideBtn" class="menu-btn" style="margin-top:8px;">Gガイドで番組表を開く</button></div>`;
-                openGguideForDate(selectedDate);
+                if (autoOpenGguide) openGguideForDate(selectedDate);
                 document.getElementById('emptyGguideBtn')?.addEventListener('click', () => openGguideForDate(selectedDate));
                 document.getElementById('emptyPasteArea')?.addEventListener('paste', (e) => {
                     e.preventDefault(); const cb = e.clipboardData || window.clipboardData;
@@ -708,6 +735,9 @@
         if (todayPrograms.length > 0) { renderChannelTabs(todayPrograms); renderProgramsForDateAndChannel(todayPrograms); }
     }
 
+    // ------------------------------------------------------------
+    //  日付タブ（長押しで「取込」パネルを開く）
+    // ------------------------------------------------------------
     function renderDateTabs() {
         const dates = getDateList();
         dateTabsDiv.innerHTML = '';
@@ -719,9 +749,110 @@
             if (!hasData) classes += ' no-data';
             tab.className = classes;
             tab.textContent = getDisplayDateStr(date);
-            tab.addEventListener('click', () => { selectedDate = new Date(date); renderAll(); });
+            bindDateTabEvents(tab, date);
             dateTabsDiv.appendChild(tab);
         });
+    }
+
+    function bindDateTabEvents(tab, date) {
+        let pressTimer = null;
+        let longPressed = false;
+        let suppressClick = false;
+        let startX = 0, startY = 0;
+
+        const clearPress = () => {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            tab.classList.remove('pressing');
+        };
+
+        const onStart = (e) => {
+            const t = (e.touches && e.touches[0]) ? e.touches[0] : e;
+            if (t.clientX === undefined) return;
+            startX = t.clientX;
+            startY = t.clientY;
+            longPressed = false;
+            clearPress();
+            tab.classList.add('pressing');
+            pressTimer = setTimeout(() => {
+                pressTimer = null;
+                longPressed = true;
+                tab.classList.remove('pressing');
+                if (navigator.vibrate) { try { navigator.vibrate(15); } catch(_) {} }
+                openPastePanel(date);
+            }, 550);
+        };
+
+        const onMove = (e) => {
+            if (!pressTimer) return;
+            const t = (e.touches && e.touches[0]) ? e.touches[0] : e;
+            if (t.clientX === undefined) return;
+            if (Math.abs(t.clientX - startX) > 12 || Math.abs(t.clientY - startY) > 12) clearPress();
+        };
+
+        const onEnd = (e) => {
+            clearPress();
+            if (longPressed) {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                suppressClick = true;
+                setTimeout(() => { suppressClick = false; longPressed = false; }, 600);
+            }
+        };
+
+        tab.addEventListener('touchstart', onStart, { passive: true });
+        tab.addEventListener('touchmove', onMove, { passive: true });
+        tab.addEventListener('touchend', onEnd);
+        tab.addEventListener('touchcancel', onEnd);
+
+        tab.addEventListener('mousedown', onStart);
+        tab.addEventListener('mousemove', onMove);
+        tab.addEventListener('mouseup', onEnd);
+        tab.addEventListener('mouseleave', clearPress);
+
+        tab.addEventListener('click', (e) => {
+            if (suppressClick || longPressed) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            selectedDate = new Date(date);
+            renderAll();
+        });
+    }
+
+    // ------------------------------------------------------------
+    //  「取込」パネルを開く
+    // ------------------------------------------------------------
+    function openPastePanel(date) {
+        if (date) {
+            selectedDate = new Date(date);
+            selectedDate.setHours(0, 0, 0, 0);
+        }
+        suppressGguideAutoOpen = true;   // 自動でGガイドを開かない
+        renderAll();
+
+        menuPanel.classList.add('open');
+        document.body.classList.add('menu-open');
+        switchMenuTab('tab-paste');
+
+        const label = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}（${getDisplayDateStr(selectedDate)}）の番組表を貼り付け`;
+        pasteHint.textContent = label;
+        pasteArea.placeholder = label;
+        pasteArea.value = '';
+
+        setTimeout(() => {
+            try { pasteArea.focus({ preventScroll: true }); } catch(_) {}
+            resetViewportScroll();
+        }, 150);
+    }
+
+    function switchMenuTab(tabId) {
+        document.querySelectorAll('.menu-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+        document.querySelectorAll('.menu-content').forEach(c => c.classList.toggle('active', c.id === tabId));
+        if (tabId === 'tab-ignore') renderUninterestingList();
+        if (tabId === 'tab-reserved') renderReservedList();
+        if (tabId === 'tab-exclude') renderExcludeList();
+        if (tabId === 'tab-highlight') renderHighlightList();
     }
 
     function renderChannelTabs(todayPrograms) {
@@ -818,60 +949,94 @@
         const panels = document.getElementById('swipePanels');
         panels.style.transform = 'translateX(-100%)';
 
-        let startX = 0, startY = 0, swiping = false, isHorizontalSwipe = false;
+        // ========================================================
+        //  チャンネル切替スワイプ
+        //  ・左右の端 30% を判定範囲にする
+        //  ・最初の横移動 8px で横スワイプに確定（縦スクロールに奪われない）
+        //  ・縦方向が明らかに優勢な時のみスクロールに譲る
+        // ========================================================
+        let startX = 0, startY = 0;
+        let swiping = false;
+        let isHorizontalSwipe = false;
+
+        const cancelChannelSwipe = (animate) => {
+            swiping = false;
+            isHorizontalSwipe = false;
+            panels.style.transition = animate ? 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+            panels.style.transform = 'translateX(-100%)';
+        };
+
         container.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.program-item, .swipe-item-wrapper')) return;
-            startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-            isHorizontalSwipe = false; swiping = true;
-        }, {passive: true});
+            if (e.touches.length !== 1) { swiping = false; return; }
+            const tx = e.touches[0].clientX;
+            if (getTouchZone(tx) === 'center') { swiping = false; return; }
+            startX = tx;
+            startY = e.touches[0].clientY;
+            swiping = true;
+            isHorizontalSwipe = false;
+            panels.style.transition = 'none';
+        }, { passive: true });
+
         container.addEventListener('touchmove', (e) => {
             if (!swiping) return;
-            const currentX = e.touches[0].clientX, currentY = e.touches[0].clientY;
-            const diffX = Math.abs(currentX - startX), diffY = Math.abs(currentY - startY);
+            if (e.touches.length !== 1) { cancelChannelSwipe(true); return; }
 
-            if (diffY > 5 && diffY > diffX) {
-                swiping = false;
-                if (isHorizontalSwipe) {
-                    isHorizontalSwipe = false;
-                    panels.style.transition = 'transform 0.2s ease-out';
-                    panels.style.transform = 'translateX(-100%)';
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - startX;
+            const diffY = currentY - startY;
+            const absX = Math.abs(diffX);
+            const absY = Math.abs(diffY);
+
+            if (!isHorizontalSwipe) {
+                // 縦スクロールが明らかに優勢なときだけ譲る
+                if (absY > V_YIELD_PX && absY > absX * 1.5) {
+                    cancelChannelSwipe(true);
+                    return;
                 }
-                return;
+                // 少しでも横に動いたら横スワイプ確定（端領域なので優先）
+                if (absX > H_LOCK_PX) {
+                    isHorizontalSwipe = true;
+                } else {
+                    return;
+                }
             }
 
-            if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) {
-                const screenWidth = window.innerWidth;
-                if (startX < screenWidth * 0.15 || startX > screenWidth * 0.85) isHorizontalSwipe = true;
-            }
-            if (isHorizontalSwipe) {
-                e.preventDefault();
-                const screenWidth = window.innerWidth;
-                const diff = currentX - startX;
-                panels.style.transition = 'none';
-                panels.style.transform = `translateX(${-100 + (diff / screenWidth * 100)}%)`;
-            }
-        }, {passive: false});
+            if (e.cancelable) e.preventDefault();
+            const offset = -100 + (diffX / window.innerWidth * 100);
+            panels.style.transition = 'none';
+            panels.style.transform = `translateX(${offset}%)`;
+        }, { passive: false });
+
         container.addEventListener('touchend', (e) => {
             if (!swiping) return;
             swiping = false;
             if (!isHorizontalSwipe) return;
+            isHorizontalSwipe = false;
+
             const screenWidth = window.innerWidth;
             const diff = e.changedTouches[0].clientX - startX;
-            const threshold = screenWidth * 0.3;
-            panels.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+            const threshold = screenWidth * 0.22;
+            panels.style.transition = 'transform 0.32s cubic-bezier(0.25, 1, 0.5, 1)';
+
             if (diff > threshold) {
                 panels.style.transform = 'translateX(0%)';
                 selectedChannel = prevChannel;
                 renderChannelTabs(programs.filter(p => p.displayDate.getTime() === selectedDate.getTime()));
-                setTimeout(() => renderAll(), 350);
+                setTimeout(() => renderAll(), 320);
             } else if (diff < -threshold) {
                 panels.style.transform = 'translateX(-200%)';
                 selectedChannel = nextChannel;
                 renderChannelTabs(programs.filter(p => p.displayDate.getTime() === selectedDate.getTime()));
-                setTimeout(() => renderAll(), 350);
+                setTimeout(() => renderAll(), 320);
             } else {
                 panels.style.transform = 'translateX(-100%)';
             }
+        });
+
+        container.addEventListener('touchcancel', () => {
+            if (!swiping) return;
+            cancelChannelSwipe(true);
         });
 
         attachDoubleTapEvents();
@@ -980,11 +1145,11 @@
                 const dx = Math.abs(e.touches[0].clientX - startX);
                 const dy = Math.abs(e.touches[0].clientY - startY);
 
-                if (dx > 20 || dy > 20) {
+                // 10px 動いたら長押しをキャンセル（横スワイプ確定と競合しないように）
+                if (dx > 10 || dy > 10) {
                     clearTimeout(pressTimer);
                     pressTimer = null;
                 }
-                // preventDefaultを削除して縦スクロールを妨げないように修正
             };
 
             const endHandler = (e) => {
@@ -1085,8 +1250,8 @@
             wrapper.addEventListener('touchstart', (e) => {
                 if (window.getSelection().toString().length > 0) return;
                 const tx = e.touches[0].clientX;
-                const screenWidth = window.innerWidth;
-                if (tx < screenWidth * 0.15 || tx > screenWidth * 0.85) return;
+                // 画面左右の端はチャンネル切替に使うので、中央のみ行スワイプ
+                if (getTouchZone(tx) !== 'center') return;
                 startX = tx;
                 startY = e.touches[0].clientY;
                 swiping = true;
@@ -1103,7 +1268,7 @@
                     return;
                 }
                 if (Math.abs(dx) > Math.abs(dy)) {
-                    e.preventDefault();
+                    if (e.cancelable) e.preventDefault();
                     currentTranslate = dx;
                     item.style.transform = `translateX(${dx}px)`;
 
@@ -1245,7 +1410,7 @@
                 if (diffY > diffX) { swiping = false; return; }
                 if (!isHorizontalSwipe && diffX > 10 && diffX > diffY) isHorizontalSwipe = true;
                 if (!isHorizontalSwipe) return;
-                e.preventDefault();
+                if (e.cancelable) e.preventDefault();
                 const diff = currentX - startX;
                 const panelWidth = wrapper.clientWidth;
                 const offset = -100 + (diff / panelWidth * 100);
@@ -1299,7 +1464,6 @@
     const collator = new Intl.Collator('ja');
 
     function renderWordList(containerId, words, type, panelsId) {
-        const sorted = words.map(w => ({ ...w })).sort((a, b) => collator.compare(a.value, b.value));
         const panels = panelsId ? document.getElementById(panelsId) : null;
         const targetEl = panels || document.getElementById(containerId);
         if (!targetEl) return;
@@ -1461,7 +1625,8 @@
             programs = programs.filter(p => p.displayDate.getTime() !== targetDate.getTime());
             programs.push(...unique);
             savePrograms(); selectedDate = new Date(targetDate); selectedChannel = CHANNEL_ORDER[0];
-            showFavorites = false; showHighlighted = false; renderAll(); pasteArea.value = ''; menuPanel.classList.remove('open');
+            showFavorites = false; showHighlighted = false; renderAll(); pasteArea.value = ''; pasteHint.textContent = '';
+            menuPanel.classList.remove('open');
             document.body.classList.remove('menu-open');
             resetViewportScroll();
         } catch (err) { alert('解析エラー: ' + err.message); }
@@ -1531,14 +1696,7 @@
     });
     document.querySelectorAll('.menu-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab.dataset.tab).classList.add('active');
-            if (tab.dataset.tab === 'tab-ignore') renderUninterestingList();
-            if (tab.dataset.tab === 'tab-reserved') renderReservedList();
-            if (tab.dataset.tab === 'tab-exclude') renderExcludeList();
-            if (tab.dataset.tab === 'tab-highlight') renderHighlightList();
+            switchMenuTab(tab.dataset.tab);
         });
     });
 
