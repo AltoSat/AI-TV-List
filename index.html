@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>✦AI番組表</title>
-    <link rel="manifest" href="data:application/manifest+json,{
-        \"name\": \"✦AI番組表\",
-        \"short_name\": \"AI番組表\",
-        \"start_url\": \".\",
-        \"display\": \"standalone\",
-        \"background_color\": \"#0f0f1a\",
-        \"theme_color\": \"#1a73e8\"
-    }">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AI番組表">
+    <meta name="theme-color" content="#1a1a2e">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
@@ -145,7 +142,15 @@
             padding: 6px 12px; font-size: 0.85em; cursor: pointer;
             white-space: nowrap;
         }
-        .count-badge { background: #fbbf24; color: #000; font-size: 0.7em; border-radius: 10px; padding: 1px 6px; margin-left: 4px; font-weight: 600; }
+
+        .count-badge {
+            font-size: 0.7em; border-radius: 10px; padding: 1px 6px; margin-left: 4px;
+            font-weight: 600; white-space: nowrap;
+        }
+        .count-badge.count { background: #3b82f6; color: #fff; }
+        .count-badge.days-normal { background: #555; color: #ccc; }
+        .count-badge.days-warn { background: #fbbf24; color: #000; }
+        .count-badge.days-danger { background: #ef4444; color: #fff; }
 
         #dateTabs {
             background: #1a1a2e; border-bottom: 1px solid #333;
@@ -374,9 +379,110 @@
 <main id="content"></main>
 
 <script>
+    // ============================================================
+    //  PWA セットアップ（アイコンをcanvasで動的生成してPNGで設定）
+    // ============================================================
+    (function setupPwa() {
+        try {
+            function makeIcon(size) {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // 背景（角丸）
+                const radius = size * 0.2;
+                ctx.fillStyle = '#0f0f1a';
+                ctx.beginPath();
+                ctx.moveTo(radius, 0);
+                ctx.lineTo(size - radius, 0);
+                ctx.quadraticCurveTo(size, 0, size, radius);
+                ctx.lineTo(size, size - radius);
+                ctx.quadraticCurveTo(size, size, size - radius, size);
+                ctx.lineTo(radius, size);
+                ctx.quadraticCurveTo(0, size, 0, size - radius);
+                ctx.lineTo(0, radius);
+                ctx.quadraticCurveTo(0, 0, radius, 0);
+                ctx.closePath();
+                ctx.fill();
+
+                // リング
+                ctx.strokeStyle = '#8ab4f8';
+                ctx.lineWidth = size * 0.045;
+                ctx.beginPath();
+                ctx.arc(size / 2, size / 2, size * 0.36, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 星（5芒星）
+                const cx = size / 2, cy = size / 2;
+                const R = size * 0.26;
+                const r = size * 0.11;
+                ctx.fillStyle = '#8ab4f8';
+                ctx.beginPath();
+                for (let i = 0; i < 10; i++) {
+                    const angle = -Math.PI / 2 + i * Math.PI / 5;
+                    const rad = (i % 2 === 0) ? R : r;
+                    const x = cx + Math.cos(angle) * rad;
+                    const y = cy + Math.sin(angle) * rad;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // 小さなアクセント
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(cx + size * 0.24, cy - size * 0.24, size * 0.045, 0, Math.PI * 2);
+                ctx.fill();
+
+                return canvas.toDataURL('image/png');
+            }
+
+            const icon192 = makeIcon(192);
+            const icon512 = makeIcon(512);
+
+            // apple-touch-icon
+            const appleIcon = document.createElement('link');
+            appleIcon.rel = 'apple-touch-icon';
+            appleIcon.href = icon192;
+            document.head.appendChild(appleIcon);
+
+            // favicon
+            const favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            favicon.type = 'image/png';
+            favicon.href = icon192;
+            document.head.appendChild(favicon);
+
+            // manifest
+            const manifest = {
+                name: '✦AI番組表',
+                short_name: 'AI番組表',
+                start_url: '.',
+                display: 'standalone',
+                orientation: 'portrait',
+                background_color: '#0f0f1a',
+                theme_color: '#1a1a2e',
+                icons: [
+                    { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+                    { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
+                    { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+                ]
+            };
+            const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+            const manifestUrl = URL.createObjectURL(blob);
+            const manifestLink = document.createElement('link');
+            manifestLink.rel = 'manifest';
+            manifestLink.href = manifestUrl;
+            document.head.appendChild(manifestLink);
+        } catch (e) {
+            console.warn('PWA setup failed:', e);
+        }
+    })();
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            const swCode = `const CACHE='tv-ai-v30';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+            const swCode = `const CACHE='tv-ai-v31';self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])))});self.addEventListener('activate',e=>{e.waitUntil(clients.claim())});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
         });
@@ -483,8 +589,6 @@
 
     let wordIdCounter = Date.now();
     function generateWordId() { return 'word_' + (wordIdCounter++); }
-    function wordsToObjects(arr) { return arr.map(value => ({ id: generateWordId(), value })); }
-    function objectsToWords(objArr) { return objArr.map(o => o.value); }
 
     function removeGarbageChars(str) {
         if (!str) return '';
@@ -492,7 +596,7 @@
     }
 
     // ============================================================
-    //  🈟(無) 🈡(新) などの先頭記号・絵文字・囲み文字を除去
+    //  先頭の記号・絵文字・囲み文字（🈟, 🈡 等）を除去
     // ============================================================
     function stripLeadingSymbols(str) {
         if (!str) return '';
@@ -547,15 +651,40 @@
         }
     }
 
+    // ============================================================
+    //  ワード配列の正規化（文字列 / オブジェクト両対応）
+    //  lastSeen はミリ秒タイムスタンプで保持
+    // ============================================================
+    function normalizeWords(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(item => {
+            if (typeof item === 'string') return { id: generateWordId(), value: item };
+            if (typeof item === 'object' && item !== null) {
+                return {
+                    id: item.id || generateWordId(),
+                    value: String(item.value || ''),
+                    lastSeen: (typeof item.lastSeen === 'number') ? item.lastSeen : undefined
+                };
+            }
+            return null;
+        }).filter(Boolean);
+    }
+
     function loadSettings() {
         try {
             const raw = localStorage.getItem(SETTINGS_KEY);
             if (raw) {
                 const data = JSON.parse(raw);
-                uninterestingByChannel = data.uninterestingByChannel || {};
-                reservedByChannel = data.reservedByChannel || {};
-                globalExcludeWords = data.globalExcludeWords || [];
-                highlightWords = data.highlight || [];
+                uninterestingByChannel = {};
+                for (const [k, v] of Object.entries(data.uninterestingByChannel || {})) {
+                    uninterestingByChannel[k] = normalizeWords(v);
+                }
+                reservedByChannel = {};
+                for (const [k, v] of Object.entries(data.reservedByChannel || {})) {
+                    reservedByChannel[k] = normalizeWords(v);
+                }
+                globalExcludeWords = normalizeWords(data.globalExcludeWords || []);
+                highlightWords = normalizeWords(data.highlight || data.highlightWords || []);
                 favorites = data.favorites || [];
                 showUninteresting = data.showUninteresting !== false;
             }
@@ -563,7 +692,14 @@
     }
     function saveSettings() {
         try {
-            const json = JSON.stringify({ uninterestingByChannel, reservedByChannel, globalExcludeWords, highlight: highlightWords, favorites, showUninteresting });
+            const json = JSON.stringify({
+                uninterestingByChannel,
+                reservedByChannel,
+                globalExcludeWords,
+                highlight: highlightWords,
+                favorites,
+                showUninteresting
+            });
             localStorage.setItem(SETTINGS_KEY, json);
         } catch(e) {}
     }
@@ -606,11 +742,6 @@
         document.body.removeChild(a);
     }
 
-    // ============================================================
-    //  ベースタイトル取得
-    //  先頭の記号・絵文字・囲み文字（🈟, 🈡 等）を除去してから
-    //  既存の区切り文字処理を行う。
-    // ============================================================
     function getBaseTitle(fullTitle) {
         fullTitle = removeGarbageChars(fullTitle);
         fullTitle = stripLeadingSymbols(fullTitle);
@@ -632,6 +763,34 @@
         }, text);
     }
     function descriptionContainsHighlight(desc) { return highlightWords.length > 0 && highlightWords.some(w => desc.includes(w.value || w)); }
+
+    // ============================================================
+    //  予約 / 不要 の各ワードについて、1週間の番組一覧に該当があれば
+    //  一番未来の日付を lastSeen に保存する。
+    // ============================================================
+    function updateLastSeenDates() {
+        const channels = new Set([
+            ...Object.keys(uninterestingByChannel),
+            ...Object.keys(reservedByChannel),
+            ...CHANNEL_ORDER
+        ]);
+        for (const ch of channels) {
+            const rList = reservedByChannel[ch] || [];
+            const uList = uninterestingByChannel[ch] || [];
+            for (const word of [...rList, ...uList]) {
+                if (!word || !word.value) continue;
+                let maxTime = null;
+                for (const p of programs) {
+                    if (p.channel !== ch) continue;
+                    if (getBaseTitle(p.title).startsWith(word.value)) {
+                        const t = p.displayDate.getTime();
+                        if (maxTime === null || t > maxTime) maxTime = t;
+                    }
+                }
+                if (maxTime !== null) word.lastSeen = maxTime;
+            }
+        }
+    }
 
     function parseProgramsFromHTML(htmlString, targetDate) {
         const parser = new DOMParser();
@@ -723,9 +882,6 @@
         } catch (e) { console.error('renderAll error:', e); }
     }
 
-    // ============================================================
-    //  番組表のみ再描画（スクロール位置を保持）
-    // ============================================================
     function renderProgramsForDateAndChannelOnly() {
         if (showFavorites || showHighlighted) return;
         const todayPrograms = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime());
@@ -747,7 +903,10 @@
     }
 
     // ============================================================
-    //  日付タブ（長押しで番組表未登録時と同じ動作）
+    //  日付タブ
+    //  長押し時：
+    //   ・その日付の取り込み済みデータがあれば削除
+    //   ・未取り込み時と同じ動作（renderAll で Gガイド自動起動 + 貼付エリア表示）
     // ============================================================
     function renderDateTabs() {
         const dates = getDateList();
@@ -776,6 +935,26 @@
             tab.classList.remove('pressing');
         };
 
+        const doLongPress = () => {
+            pressTimer = null;
+            longPressed = true;
+            tab.classList.remove('pressing');
+            if (navigator.vibrate) { try { navigator.vibrate(15); } catch(_) {} }
+
+            // 取り込み済みデータがあれば削除
+            const hasData = programs.some(p => p.displayDate.getTime() === date.getTime());
+            if (hasData) {
+                programs = programs.filter(p => p.displayDate.getTime() !== date.getTime());
+                savePrograms();
+            }
+
+            // 未取り込みの日付をタップした時と同じ動作
+            selectedDate = new Date(date);
+            selectedDate.setHours(0, 0, 0, 0);
+            suppressGguideAutoOpen = false;
+            renderAll();
+        };
+
         const onStart = (e) => {
             const t = (e.touches && e.touches[0]) ? e.touches[0] : e;
             if (t.clientX === undefined) return;
@@ -784,17 +963,7 @@
             longPressed = false;
             clearPress();
             tab.classList.add('pressing');
-            pressTimer = setTimeout(() => {
-                pressTimer = null;
-                longPressed = true;
-                tab.classList.remove('pressing');
-                if (navigator.vibrate) { try { navigator.vibrate(15); } catch(_) {} }
-                // 番組表未登録時と同じ動作：日付を選択して renderAll
-                selectedDate = new Date(date);
-                selectedDate.setHours(0, 0, 0, 0);
-                suppressGguideAutoOpen = false;
-                renderAll();
-            }, 550);
+            pressTimer = setTimeout(doLongPress, 550);
         };
 
         const onMove = (e) => {
@@ -1342,6 +1511,9 @@
                         }
                     }
                     saveSettings();
+                    // 追加/削除直後に lastSeen を最新化
+                    updateLastSeenDates();
+                    saveSettings();
                 }
                 resetSwipe();
             });
@@ -1442,7 +1614,11 @@
     const collator = new Intl.Collator('ja');
 
     // ============================================================
-    //  単語リスト描画（スクロール位置を保持）
+    //  単語リスト描画
+    //  - 予約/不要: 該当件数があれば件数バッジ（青）
+    //              なければ lastSeen からの経過日数を表示
+    //              （15日以上: 黄, 30日以上: 赤）
+    //  - 除外/強調: 件数のみ（青）
     // ============================================================
     function renderWordList(containerId, words, type, panelsId) {
         const panels = panelsId ? document.getElementById(panelsId) : null;
@@ -1457,15 +1633,40 @@
             savedScrolls.push(targetEl.scrollTop);
         }
 
-        const buildListHTML = (chWords) => {
+        const todayTs = (() => { const t = new Date(); t.setHours(0,0,0,0); return t.getTime(); })();
+
+        const buildBadge = (item, ch) => {
+            if (type === 'uninteresting' || type === 'reserved') {
+                const matchCount = programs.filter(p => p.channel === ch && getBaseTitle(p.title).startsWith(item.value)).length;
+                if (matchCount > 0) {
+                    return `<span class="count-badge count">${matchCount}件</span>`;
+                }
+                if (typeof item.lastSeen === 'number') {
+                    const last = new Date(item.lastSeen); last.setHours(0,0,0,0);
+                    const days = Math.max(0, Math.round((todayTs - last.getTime()) / 86400000));
+                    let cls = 'days-normal';
+                    if (days >= 30) cls = 'days-danger';
+                    else if (days >= 15) cls = 'days-warn';
+                    return `<span class="count-badge ${cls}">${days}日前</span>`;
+                }
+                return '';
+            }
+            if (type === 'exclude') {
+                const c = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(item.value)).length;
+                return c > 0 ? `<span class="count-badge count">${c}件</span>` : '';
+            }
+            if (type === 'highlight') {
+                const c = programs.filter(p => p.title.includes(item.value) || (p.description && p.description.includes(item.value))).length;
+                return c > 0 ? `<span class="count-badge count">${c}件</span>` : '';
+            }
+            return '';
+        };
+
+        const buildListHTML = (chWords, ch) => {
             const sortedCh = chWords.map(w => ({ ...w })).sort((a, b) => collator.compare(a.value, b.value));
             return sortedCh.map(item => {
-                let count = 0;
-                if (type === 'uninteresting') count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
-                else if (type === 'reserved') count = programs.filter(p => p.channel === selectedChannel && getBaseTitle(p.title).startsWith(item.value)).length;
-                else if (type === 'exclude') count = programs.filter(p => p.displayDate.getTime() === selectedDate.getTime() && p.title.includes(item.value)).length;
-                else if (type === 'highlight') count = programs.filter(p => p.title.includes(item.value) || (p.description && p.description.includes(item.value))).length;
-                return `<div class="list-item"><input type="text" value="${escapeHTML(item.value)}" data-id="${item.id}" data-type="${type}" class="edit-word">${count > 0 ? `<span class="count-badge">${count}件</span>` : ''}<button data-action="removeWord" data-id="${item.id}" data-type="${type}">✕</button></div>`;
+                const badge = buildBadge(item, ch);
+                return `<div class="list-item"><input type="text" value="${escapeHTML(item.value)}" data-id="${item.id}" data-type="${type}" class="edit-word">${badge}<button data-action="removeWord" data-id="${item.id}" data-type="${type}">✕</button></div>`;
             }).join('');
         };
 
@@ -1481,16 +1682,16 @@
             const nextWords = type === 'uninteresting' ? (uninterestingByChannel[nextChannel] || []) : (reservedByChannel[nextChannel] || []);
 
             panels.innerHTML = `
-                <div class="menu-list-panel">${buildListHTML(prevWords)}</div>
-                <div class="menu-list-panel">${buildListHTML(currWords)}</div>
-                <div class="menu-list-panel">${buildListHTML(nextWords)}</div>
+                <div class="menu-list-panel" data-ch="${prevChannel}">${buildListHTML(prevWords, prevChannel)}</div>
+                <div class="menu-list-panel" data-ch="${selectedChannel}">${buildListHTML(currWords, selectedChannel)}</div>
+                <div class="menu-list-panel" data-ch="${nextChannel}">${buildListHTML(nextWords, nextChannel)}</div>
             `;
             panels.style.transform = 'translateX(-100%)';
         } else if (panels) {
-            panels.innerHTML = `<div class="menu-list-panel">${buildListHTML(words)}</div>`;
+            panels.innerHTML = `<div class="menu-list-panel">${buildListHTML(words, undefined)}</div>`;
             panels.style.transform = 'translateX(0)';
         } else {
-            targetEl.innerHTML = buildListHTML(words);
+            targetEl.innerHTML = buildListHTML(words, undefined);
         }
 
         // スクロール位置を復元
@@ -1545,8 +1746,7 @@
 
     // ============================================================
     //  編集の blur / focus 処理
-    //  focus が別の edit-word に移った瞬間に再描画タイマーをキャンセルし
-    //  無駄な再描画・スライドを抑制する。
+    //  focus が別の edit-word に移った瞬間に再描画タイマーをキャンセル
     // ============================================================
     let blurTimer = null;
 
@@ -1586,7 +1786,20 @@
             if (!val) return;
             let list = getWordListByType(types[i]);
             if (!list.some(item => item.value === val)) {
-                list.push({ id: generateWordId(), value: val });
+                const newItem = { id: generateWordId(), value: val };
+                // 追加時に既存番組から lastSeen を計算
+                if (types[i] === 'uninteresting' || types[i] === 'reserved') {
+                    let maxTime = null;
+                    for (const p of programs) {
+                        if (p.channel !== selectedChannel) continue;
+                        if (getBaseTitle(p.title).startsWith(val)) {
+                            const t = p.displayDate.getTime();
+                            if (maxTime === null || t > maxTime) maxTime = t;
+                        }
+                    }
+                    if (maxTime !== null) newItem.lastSeen = maxTime;
+                }
+                list.push(newItem);
                 setWordListByType(types[i], list);
                 saveSettings();
                 renderWordList(['uninterestingList','reservedList','excludeList','highlightList'][i], list, types[i], i < 2 ? ['menuListPanelsIgnore','menuListPanelsReserved'][i] : null);
@@ -1598,10 +1811,15 @@
     });
 
     function migrateWordLists() {
-        for (const ch of Object.keys(uninterestingByChannel)) { if (uninterestingByChannel[ch].length > 0 && typeof uninterestingByChannel[ch][0] === 'string') uninterestingByChannel[ch] = wordsToObjects(uninterestingByChannel[ch]); }
-        for (const ch of Object.keys(reservedByChannel)) { if (reservedByChannel[ch].length > 0 && typeof reservedByChannel[ch][0] === 'string') reservedByChannel[ch] = wordsToObjects(reservedByChannel[ch]); }
-        if (globalExcludeWords.length > 0 && typeof globalExcludeWords[0] === 'string') globalExcludeWords = wordsToObjects(globalExcludeWords);
-        if (highlightWords.length > 0 && typeof highlightWords[0] === 'string') highlightWords = wordsToObjects(highlightWords);
+        // 既に normalizeWords でオブジェクト化されるため、ここでは互換性確保のみ
+        for (const ch of Object.keys(uninterestingByChannel)) {
+            uninterestingByChannel[ch] = normalizeWords(uninterestingByChannel[ch]);
+        }
+        for (const ch of Object.keys(reservedByChannel)) {
+            reservedByChannel[ch] = normalizeWords(reservedByChannel[ch]);
+        }
+        globalExcludeWords = normalizeWords(globalExcludeWords);
+        highlightWords = normalizeWords(highlightWords);
     }
 
     function renderUninterestingList() { renderWordList('uninterestingList', uninterestingByChannel[selectedChannel] || [], 'uninteresting', 'menuListPanelsIgnore'); }
@@ -1641,7 +1859,11 @@
             for (const p of parsed) { const id = getProgramId(p); if (!seen.has(id)) { seen.add(id); unique.push(p); } }
             programs = programs.filter(p => p.displayDate.getTime() !== targetDate.getTime());
             programs.push(...unique);
-            savePrograms(); selectedDate = new Date(targetDate); selectedChannel = CHANNEL_ORDER[0];
+            savePrograms();
+            // 取り込んだタイミングで 予約/不要 の lastSeen を更新
+            updateLastSeenDates();
+            saveSettings();
+            selectedDate = new Date(targetDate); selectedChannel = CHANNEL_ORDER[0];
             showFavorites = false; showHighlighted = false; renderAll();
             menuPanel.classList.remove('open');
             document.body.classList.remove('menu-open');
@@ -1650,7 +1872,17 @@
     }
 
     exportBtn.addEventListener('click', () => {
-        const data = { programs, settings: { uninterestingByChannel: Object.fromEntries(Object.entries(uninterestingByChannel).map(([k,v]) => [k, objectsToWords(v)])), reservedByChannel: Object.fromEntries(Object.entries(reservedByChannel).map(([k,v]) => [k, objectsToWords(v)])), globalExcludeWords: objectsToWords(globalExcludeWords), highlightWords: objectsToWords(highlightWords), favorites, showUninteresting } };
+        const data = {
+            programs,
+            settings: {
+                uninterestingByChannel: Object.fromEntries(Object.entries(uninterestingByChannel).map(([k,v]) => [k, v])),
+                reservedByChannel: Object.fromEntries(Object.entries(reservedByChannel).map(([k,v]) => [k, v])),
+                globalExcludeWords: globalExcludeWords,
+                highlightWords: highlightWords,
+                favorites,
+                showUninteresting
+            }
+        };
         const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tv-ai-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
     });
@@ -1667,13 +1899,18 @@
                         description: removeGarbageChars(p.description),
                         channel: CHANNEL_NAME_MIGRATION[p.channel] || p.channel
                     }));
-                    uninterestingByChannel = {}; for (const [k,v] of Object.entries(data.settings.uninterestingByChannel || {})) uninterestingByChannel[k] = wordsToObjects(v);
-                    reservedByChannel = {}; for (const [k,v] of Object.entries(data.settings.reservedByChannel || {})) reservedByChannel[k] = wordsToObjects(v);
-                    globalExcludeWords = wordsToObjects(data.settings.globalExcludeWords || []);
-                    highlightWords = wordsToObjects(data.settings.highlightWords || []);
+                    uninterestingByChannel = {};
+                    for (const [k,v] of Object.entries(data.settings.uninterestingByChannel || {})) uninterestingByChannel[k] = normalizeWords(v);
+                    reservedByChannel = {};
+                    for (const [k,v] of Object.entries(data.settings.reservedByChannel || {})) reservedByChannel[k] = normalizeWords(v);
+                    globalExcludeWords = normalizeWords(data.settings.globalExcludeWords || []);
+                    highlightWords = normalizeWords(data.settings.highlightWords || data.settings.highlight || []);
                     favorites = data.settings.favorites || [];
                     showUninteresting = data.settings.showUninteresting !== false;
-                    savePrograms(); saveSettings(); renderAll(); menuPanel.classList.remove('open');
+                    savePrograms();
+                    updateLastSeenDates();
+                    saveSettings();
+                    renderAll(); menuPanel.classList.remove('open');
                     document.body.classList.remove('menu-open');
                     resetViewportScroll();
                     alert('インポート完了');
@@ -1721,6 +1958,7 @@
             selectedDate = programs.find(p => p.displayDate.getTime() === today.getTime()) ? today : programs[0].displayDate;
         }
         selectedChannel = CHANNEL_ORDER[0];
+        updateLastSeenDates();
         saveSettings(); updateHeaderButtons();
         attachMenuSwipeEvents();
         renderAll();
